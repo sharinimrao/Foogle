@@ -1,0 +1,17 @@
+{
+  "version": 2,
+  "rewrites": [
+    { "source": "/api/room/:code/vote", "destination": "/api/room/[code]" },
+    { "source": "/api/room/:code/state", "destination": "/api/room/[code]" },
+    { "source": "/api/room/:code", "destination": "/api/room/[code]" }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "X-Frame-Options", "value": "DENY" },
+        { "key": "X-Content-Type-Options", "value": "nosniff" }
+      ]
+    }
+  ]
+}

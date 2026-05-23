@@ -1,0 +1,14 @@
+{
+  "name": "forknife",
+  "version": "1.0.0",
+  "description": "Where should we eat — settled.",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@vercel/kv": "^2.0.0",
+    "pusher": "^5.2.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
