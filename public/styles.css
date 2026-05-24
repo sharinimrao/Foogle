@@ -955,6 +955,79 @@ input[type="range"]::-moz-range-thumb {
 .swipe-btn.yes { border-color: var(--olive); }
 .swipe-btn.no { border-color: var(--coral); }
 
+.session-end {
+  padding: 2rem 0 1rem;
+  animation: matchPop 0.5s cubic-bezier(0.2, 0.8, 0.3, 1.2);
+}
+.session-match-card {
+  background: var(--paper);
+  border: 1.5px solid var(--coral-soft);
+  border-radius: 16px;
+  padding: 1.1rem 1.25rem;
+  margin-bottom: 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: var(--shadow-soft);
+}
+.session-match-card:hover {
+  border-color: var(--coral);
+  transform: translateY(-2px);
+}
+.smc-name {
+  font-family: var(--serif);
+  font-size: 20px;
+  font-weight: 500;
+  color: var(--ink);
+  margin-bottom: 4px;
+  letter-spacing: -0.01em;
+}
+.smc-meta {
+  font-size: 13px;
+  color: var(--ink-soft);
+  margin-bottom: 8px;
+}
+.smc-vibe {
+  font-size: 13px;
+  color: var(--ink-soft);
+  line-height: 1.4;
+  margin-bottom: 8px;
+}
+.smc-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+.smc-btn {
+  flex: 1;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  border: 1px solid var(--coral-soft);
+  background: var(--paper);
+  color: var(--coral);
+  transition: all 0.15s;
+}
+.smc-btn:hover { background: var(--coral-soft); }
+.smc-btn.primary {
+  background: linear-gradient(135deg, var(--coral), var(--peach));
+  color: white;
+  border-color: transparent;
+}
+.no-matches-state {
+  text-align: center;
+  padding: 2rem 0;
+  font-family: var(--serif);
+  font-style: italic;
+  color: var(--ink-soft);
+}
+.no-matches-state .icon {
+  font-size: 48px;
+  margin-bottom: 1rem;
+  filter: grayscale(0.3);
+}
+
 .match-burst {
   text-align: center;
   padding: 3rem 0;

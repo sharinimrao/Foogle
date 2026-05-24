@@ -437,6 +437,9 @@ $('#create-confirm').onclick = async () => {
 };
 
 function enterRoom() {
+  state.group.markedFinished = false;
+  state.group.sessionEndedShown = false;
+  state.lastMatch = null;
   $('#rc-code').textContent = state.group.roomCode;
   $('#swipe-controls').hidden = false;
   show('room');
@@ -453,6 +456,11 @@ function buildSwipeStack() {
     $('#swipe-controls').hidden = true;
     state.group.swipedMembers.add(state.group.voterId);
     renderPresence();
+    // Tell the server this voter is done with their stack
+    if (!state.group.markedFinished) {
+      state.group.markedFinished = true;
+      postFinish();
+    }
     return;
   }
   const visible = remaining.slice(0, 3);
@@ -462,6 +470,28 @@ function buildSwipeStack() {
     area.appendChild(card);
   });
   $('#rs-progress').textContent = `${state.group.swipeIndex}/${state.group.candidates.length}`;
+}
+
+async function postFinish() {
+  try {
+    const r = await fetch(`/api/room/${state.group.roomCode}/finish`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ voterId: state.group.voterId }),
+    });
+    if (!r.ok) return;
+    const data = await r.json();
+    // If we're the last one done, the server will publish a session-ended event
+    // and the channel listener will handle it. But also handle it locally just in case.
+    if (data.everyoneDone && data.finalMatches) {
+      // Small delay so the server event arrives first if it's going to
+      setTimeout(() => {
+        if (!state.group.sessionEndedShown) {
+          showSessionEnd(data.finalMatches);
+        }
+      }, 800);
+    }
+  } catch (e) { console.error(e); }
 }
 
 function createSwipeCard(spot, stackPos) {
@@ -644,6 +674,18 @@ async function connectToRoom() {
     if (matchSpot) showMatch(matchSpot);
   });
 
+  channel.bind('voter-finished', (data) => {
+    if (data.voterId && data.voterId !== state.group.voterId) {
+      state.group.swipedMembers.add(data.voterId);
+      renderPresence();
+    }
+  });
+
+  channel.bind('session-ended', (data) => {
+    if (state.group.sessionEndedShown) return;
+    showSessionEnd(data.matches || []);
+  });
+
   channel.bind('pusher:subscription_error', (err) => {
     console.error('Pusher subscription error:', err);
     startPollingFallback();
@@ -749,6 +791,75 @@ function disconnectRoom() {
   state.group.swipedMembers = new Set();
 }
 
+function showSessionEnd(matchIds) {
+  state.group.sessionEndedShown = true;
+  const matchSpots = (matchIds || [])
+    .map(id => state.group.candidates.find(c => (c.id || c.name) === id))
+    .filter(Boolean);
+
+  const title = $('#se-title');
+  const sub = $('#se-sub');
+  const list = $('#session-matches-list');
+  list.innerHTML = '';
+
+  if (matchSpots.length === 0) {
+    title.textContent = 'No overlap.';
+    sub.textContent = "You all had different tastes. Time to compromise — or try again.";
+    list.innerHTML = `
+      <div class="no-matches-state">
+        <div class="icon">🤷</div>
+        <div>Nobody agreed on anything. Maybe expand the cuisines next time?</div>
+      </div>
+    `;
+  } else {
+    if (matchSpots.length === 1) {
+      title.textContent = 'One match.';
+      sub.textContent = "Looks like the only place you all agreed on.";
+    } else {
+      title.textContent = `${matchSpots.length} matches.`;
+      sub.textContent = "Places you all agreed on. Pick one together.";
+    }
+    matchSpots.forEach(spot => {
+      const card = document.createElement('div');
+      card.className = 'session-match-card';
+      card.innerHTML = `
+        <div class="smc-name">${escapeHtml(spot.name)}</div>
+        <div class="smc-meta">${escapeHtml(spot.cuisine)} · ${escapeHtml(spot.priceLevel || '$$')} · ${escapeHtml(spot.neighborhood || '')}</div>
+        <div class="smc-vibe">${escapeHtml(spot.vibe || spot.why || '')}</div>
+        <div class="smc-actions">
+          <button class="smc-btn primary" data-action="directions">Directions</button>
+          <button class="smc-btn" data-action="details">Details</button>
+        </div>
+      `;
+      card.querySelector('[data-action="directions"]').onclick = (e) => {
+        e.stopPropagation();
+        const q = encodeURIComponent(`${spot.name} ${spot.address || state.group.location}`);
+        window.open(`https://www.google.com/maps/search/?api=1&query=${q}`, '_blank');
+      };
+      card.querySelector('[data-action="details"]').onclick = (e) => {
+        e.stopPropagation();
+        showMatch(spot);
+      };
+      list.appendChild(card);
+    });
+  }
+  show('session-end');
+}
+
+$('#se-restart').onclick = () => {
+  disconnectRoom();
+  state.lastMatch = null;
+  state.group.roomCode = null;
+  state.group.candidates = [];
+  state.group.swipeIndex = 0;
+  state.group.myVotes = {};
+  state.group.matchedSpots = [];
+  state.group.markedFinished = false;
+  state.group.sessionEndedShown = false;
+  show('home');
+  renderRecents();
+};
+
 function showMatch(spot) {
   state.lastMatch = spot;
   // Don't disconnect — user might want to keep swiping for more matches
@@ -783,6 +894,8 @@ $('#match-reset').onclick = () => {
   state.group.swipeIndex = 0;
   state.group.myVotes = {};
   state.group.matchedSpots = [];
+  state.group.markedFinished = false;
+  state.group.sessionEndedShown = false;
   show('home');
   renderRecents();
 };

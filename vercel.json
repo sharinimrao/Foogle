@@ -2,6 +2,7 @@
   "version": 2,
   "rewrites": [
     { "source": "/api/room/:code/vote", "destination": "/api/room/[code]" },
+    { "source": "/api/room/:code/finish", "destination": "/api/room/[code]" },
     { "source": "/api/room/:code/state", "destination": "/api/room/[code]" },
     { "source": "/api/room/:code", "destination": "/api/room/[code]" }
   ],

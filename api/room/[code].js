@@ -105,6 +105,49 @@ export default async function handler(req, res) {
     });
   }
 
+  // POST /api/room/{code}/finish — mark a voter as having finished their stack
+  if (req.method === 'POST' && action === 'finish') {
+    const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+    const { voterId } = body;
+
+    if (!room.voters) room.voters = [];
+    if (!room.finishedVoters) room.finishedVoters = [];
+    if (voterId && !room.voters.includes(voterId)) {
+      room.voters.push(voterId);
+      room.participants = room.voters.length;
+    }
+    if (voterId && !room.finishedVoters.includes(voterId)) {
+      room.finishedVoters.push(voterId);
+    }
+
+    await kv.set(key, room, { ex: 3600 });
+
+    const everyoneDone = room.finishedVoters.length >= room.voters.length && room.voters.length >= 2;
+    const finalMatches = computeMatches(room);
+
+    // Notify the room that this voter finished
+    await publish(`presence-room-${room.code}`, 'voter-finished', {
+      voterId,
+      finishedCount: room.finishedVoters.length,
+      totalCount: room.voters.length,
+    });
+
+    // If everyone is done swiping, fire the session-ended event
+    if (everyoneDone) {
+      await publish(`presence-room-${room.code}`, 'session-ended', {
+        matches: finalMatches,
+      });
+    }
+
+    return res.status(200).json({
+      ok: true,
+      everyoneDone,
+      finalMatches,
+      finishedCount: room.finishedVoters.length,
+      totalCount: room.voters.length,
+    });
+  }
+
   return res.status(404).json({ error: 'Not found' });
 }
 
