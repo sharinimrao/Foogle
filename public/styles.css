@@ -695,7 +695,22 @@ input[type="range"]::-moz-range-thumb {
   padding: 12px 0;
   border-bottom: 1px solid var(--line);
 }
-.rs-item { text-align: center; }
+.rs-item { text-align: center; padding: 8px 4px; }
+.rs-item-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  border-radius: 12px;
+  transition: background 0.15s;
+}
+.rs-item-btn:hover {
+  background: var(--coral-soft);
+}
+.rs-item-btn.has-matches .rs-num {
+  color: var(--coral);
+  font-weight: 700;
+}
 .rs-num {
   font-family: var(--serif);
   font-size: 22px;
@@ -709,6 +724,31 @@ input[type="range"]::-moz-range-thumb {
   margin-top: 4px;
   font-family: var(--serif);
   font-style: italic;
+}
+
+.match-item {
+  background: var(--paper);
+  border: 1px solid var(--coral-soft);
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.match-item:hover {
+  border-color: var(--coral);
+  transform: translateY(-1px);
+}
+.match-item-name {
+  font-family: var(--serif);
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--ink);
+  margin-bottom: 2px;
+}
+.match-item-meta {
+  font-size: 12px;
+  color: var(--ink-soft);
 }
 
 .presence-row {

@@ -53,6 +53,7 @@ const state = {
     candidates: [],
     swipeIndex: 0,
     myVotes: {},
+    matchedSpots: [],
     voterId: getOrCreateVoterId(),
     userName: getOrCreateUserName(),
     pusherClient: null,
@@ -385,7 +386,7 @@ $('#join-confirm').onclick = async () => {
   const code = $('#room-code-input').value.trim();
   if (code.length !== 4) { toast('Need a 4-character code'); return; }
   try {
-    const r = await fetch(`/api/room/${code}`);
+    const r = await fetch(`/api/room/${code}?voterId=${encodeURIComponent(state.group.voterId)}`);
     if (!r.ok) throw new Error('Room not found');
     const room = await r.json();
     state.group.roomCode = code;
@@ -419,7 +420,7 @@ $('#create-confirm').onclick = async () => {
     const r = await fetch('/api/room', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ candidates: data.restaurants, location: loc }),
+      body: JSON.stringify({ candidates: data.restaurants, location: loc, hostVoterId: state.group.voterId }),
     });
     const room = await r.json();
     state.group.roomCode = room.code;
@@ -614,13 +615,30 @@ async function connectToRoom() {
   });
 
   channel.bind('vote', (data) => {
-    if (data.vote === 'yes') {
-      showVoteFlash(`Someone said yes${data.tally.yes > 1 ? ` (${data.tally.yes} now)` : ''}`);
+    if (data.vote === 'yes' && data.voterId !== state.group.voterId) {
+      const tallyText = data.tally.yes > 1 ? ` (${data.tally.yes} now)` : '';
+      showVoteFlash(`Someone said yes${tallyText}`);
     }
     $('#rs-progress').textContent = `${state.group.swipeIndex}/${state.group.candidates.length}`;
+    if (typeof data.totalMatches === 'number') {
+      renderMatchesCount(data.totalMatches);
+    }
+    if (typeof data.participants === 'number') {
+      $('#rs-people').textContent = data.participants;
+    }
+  });
+
+  channel.bind('participants', (data) => {
+    if (typeof data.participants === 'number') {
+      $('#rs-people').textContent = data.participants;
+    }
   });
 
   channel.bind('match', async (data) => {
+    if (Array.isArray(data.allMatches)) {
+      state.group.matchedSpots = data.allMatches;
+      renderMatchesCount(data.allMatches.length);
+    }
     if (state.lastMatch) return;
     const matchSpot = state.group.candidates.find(c => (c.id || c.name) === data.spotId);
     if (matchSpot) showMatch(matchSpot);
@@ -631,6 +649,49 @@ async function connectToRoom() {
     startPollingFallback();
   });
 }
+
+function renderMatchesCount(count) {
+  $('#rs-matches').textContent = count;
+  const btn = $('#rs-matches-btn');
+  if (btn) {
+    if (count > 0) btn.classList.add('has-matches');
+    else btn.classList.remove('has-matches');
+  }
+}
+
+function openMatchesDialog() {
+  const dialog = $('#matches-modal');
+  const list = $('#matches-list');
+  const empty = $('#matches-empty');
+  list.innerHTML = '';
+
+  const matchSpots = state.group.matchedSpots
+    .map(id => state.group.candidates.find(c => (c.id || c.name) === id))
+    .filter(Boolean);
+
+  if (matchSpots.length === 0) {
+    empty.hidden = false;
+  } else {
+    empty.hidden = true;
+    matchSpots.forEach(spot => {
+      const item = document.createElement('div');
+      item.className = 'match-item';
+      item.innerHTML = `
+        <div class="match-item-name">${escapeHtml(spot.name)}</div>
+        <div class="match-item-meta">${escapeHtml(spot.cuisine)} · ${escapeHtml(spot.priceLevel || '$$')} · ${escapeHtml(spot.neighborhood || '')}</div>
+      `;
+      item.onclick = () => {
+        dialog.close();
+        showMatch(spot);
+      };
+      list.appendChild(item);
+    });
+  }
+  dialog.showModal();
+}
+
+$('#rs-matches-btn').onclick = openMatchesDialog;
+$('#close-matches').onclick = () => $('#matches-modal').close();
 
 function renderPresence() {
   const row = $('#presence-row');
@@ -664,7 +725,8 @@ function startPollingFallback() {
       if (!r.ok) return;
       const data = await r.json();
       $('#rs-people').textContent = data.participants;
-      $('#rs-matches').textContent = data.matches.length;
+      renderMatchesCount(data.matches.length);
+      state.group.matchedSpots = data.matches;
       if (data.matches.length > 0 && !state.lastMatch) {
         const matchSpot = state.group.candidates.find(c => (c.id || c.name) === data.matches[0]);
         if (matchSpot) showMatch(matchSpot);
@@ -689,7 +751,7 @@ function disconnectRoom() {
 
 function showMatch(spot) {
   state.lastMatch = spot;
-  disconnectRoom();
+  // Don't disconnect — user might want to keep swiping for more matches
   $('#match-name').textContent = spot.name;
   $('#match-meta').textContent = `${spot.cuisine} · ${spot.priceLevel || '$$'} · ${spot.neighborhood || ''}`;
   $('#match-why').textContent = spot.why || spot.vibe || '';
@@ -708,12 +770,19 @@ function showMatch(spot) {
   show('match');
 }
 
+$('#match-keep-swiping').onclick = () => {
+  state.lastMatch = null; // Allow showing future matches
+  show('room');
+};
+
 $('#match-reset').onclick = () => {
+  disconnectRoom();
   state.lastMatch = null;
   state.group.roomCode = null;
   state.group.candidates = [];
   state.group.swipeIndex = 0;
   state.group.myVotes = {};
+  state.group.matchedSpots = [];
   show('home');
   renderRecents();
 };
@@ -722,7 +791,7 @@ $('#share-room-btn').onclick = async () => {
   const url = `${window.location.origin}/?join=${state.group.roomCode}`;
   if (navigator.share) {
     try {
-      await navigator.share({ title: 'Forknife', text: `Decide where we eat. Room: ${state.group.roomCode}`, url });
+      await navigator.share({ title: 'Foogle', text: `Help us decide where to eat. Room code: ${state.group.roomCode}`, url });
     } catch (e) {}
   } else {
     await navigator.clipboard.writeText(url);

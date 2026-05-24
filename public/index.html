@@ -197,7 +197,7 @@
     <div class="room-stats">
       <div class="rs-item"><div class="rs-num" id="rs-people">1</div><div class="rs-lbl">here</div></div>
       <div class="rs-item"><div class="rs-num" id="rs-progress">0/0</div><div class="rs-lbl">swiped</div></div>
-      <div class="rs-item"><div class="rs-num" id="rs-matches">0</div><div class="rs-lbl">matches</div></div>
+      <button class="rs-item rs-item-btn" id="rs-matches-btn" type="button"><div class="rs-num" id="rs-matches">0</div><div class="rs-lbl">matches</div></button>
     </div>
 
     <div class="presence-row" id="presence-row" hidden></div>
@@ -218,7 +218,7 @@
 
   <section class="screen" id="screen-match">
     <div class="match-burst">
-      <div class="match-label">it's settled</div>
+      <div class="match-label">it's a match</div>
       <h2 class="match-title" id="match-name">—</h2>
       <div class="match-meta" id="match-meta">—</div>
       <p class="match-why" id="match-why">—</p>
@@ -229,6 +229,8 @@
         </button>
         <button class="ghost-btn" id="match-call">Call</button>
       </div>
+      <button class="text-btn" id="match-keep-swiping">← Keep swiping for more matches</button>
+      <br>
       <button class="text-btn" id="match-reset">Start over</button>
     </div>
   </section>
@@ -243,6 +245,15 @@
     <p>A search engine for your next meal. Solves the "where should we eat" debate with restaurant data and a stubborn refusal to suggest 47 options.</p>
     <p class="modal-fine">Built as a demo. Restaurant data from Google Places.</p>
     <button class="primary-btn small" id="close-info">Got it</button>
+  </div>
+</dialog>
+
+<dialog id="matches-modal">
+  <div class="modal-content">
+    <h3>Places you all agreed on</h3>
+    <p class="modal-fine" id="matches-empty">No matches yet — keep swiping! Everyone in the room needs to swipe right on the same place.</p>
+    <div id="matches-list"></div>
+    <button class="primary-btn small" id="close-matches">Back to swiping</button>
   </div>
 </dialog>
 
