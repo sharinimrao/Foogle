@@ -40,6 +40,8 @@ const state = {
     price: '$$',
     distance: 5,
     results: [],
+    seenIds: new Set(),
+    radiusBoost: 0,
   },
   group: {
     roomCode: null,
@@ -186,21 +188,30 @@ $('#solo-find').onclick = async () => {
   const loc = $('#solo-location').value.trim();
   if (!loc) { toast('Where are you?'); return; }
   state.solo.location = loc;
+  state.solo.seenIds = new Set();
+  state.solo.radiusBoost = 0;
+  await runSoloSearch();
+};
+
+async function runSoloSearch() {
   const btn = $('#solo-find');
   btn.disabled = true;
   btn.querySelector('span').textContent = 'Thinking…';
 
   try {
+    const effectiveDistance = Math.min(50, state.solo.distance + state.solo.radiusBoost);
     const data = await fetchRestaurants({
-      location: loc,
+      location: state.solo.location,
       coords: $('#solo-location').dataset.coords,
       cuisines: Array.from(state.solo.cuisines),
       vetoes: Array.from(state.solo.vetoes),
       price: state.solo.price,
-      distance: state.solo.distance,
+      distance: effectiveDistance,
       count: 6,
+      excludeIds: Array.from(state.solo.seenIds),
     });
     state.solo.results = data.restaurants;
+    data.restaurants.forEach(r => state.solo.seenIds.add(r.id));
     renderResults();
     show('results');
   } catch (e) {
@@ -208,9 +219,47 @@ $('#solo-find').onclick = async () => {
     toast(e.message || 'Something glitched');
   } finally {
     btn.disabled = false;
-    btn.querySelector('span').textContent = 'Find us food';
+    btn.querySelector('span').textContent = 'Foogle it';
   }
-};
+}
+
+async function reshuffleResults() {
+  const reshuffleButtons = [$('#reroll-btn'), $('#reroll-top')];
+  reshuffleButtons.forEach(b => { if (b) b.disabled = true; });
+  try {
+    const effectiveDistance = Math.min(50, state.solo.distance + state.solo.radiusBoost);
+    const data = await fetchRestaurants({
+      location: state.solo.location,
+      coords: $('#solo-location').dataset.coords,
+      cuisines: Array.from(state.solo.cuisines),
+      vetoes: Array.from(state.solo.vetoes),
+      price: state.solo.price,
+      distance: effectiveDistance,
+      count: 6,
+      excludeIds: Array.from(state.solo.seenIds),
+    });
+    if (!data.restaurants || data.restaurants.length === 0) {
+      if (state.solo.radiusBoost < 10) {
+        state.solo.radiusBoost += 5;
+        toast(`Expanding search to ${state.solo.distance + state.solo.radiusBoost} mi`);
+        await reshuffleResults();
+        return;
+      } else {
+        toast("That's all I've got. Try different cuisines?");
+        return;
+      }
+    }
+    state.solo.results = data.restaurants;
+    data.restaurants.forEach(r => state.solo.seenIds.add(r.id));
+    renderResults();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  } catch (e) {
+    console.error(e);
+    toast(e.message || 'Reshuffle failed');
+  } finally {
+    reshuffleButtons.forEach(b => { if (b) b.disabled = false; });
+  }
+}
 
 async function fetchRestaurants(params) {
   const r = await fetch('/api/restaurants', {
@@ -228,9 +277,11 @@ async function fetchRestaurants(params) {
 function renderResults() {
   const list = $('#results-list');
   list.innerHTML = '';
+  const titleEl = $('#results-title');
+  if (titleEl) titleEl.textContent = `${state.solo.results.length} results.`;
   const sub = state.solo.cuisines.size
     ? `In the mood for ${Array.from(state.solo.cuisines).slice(0, 3).join(', ')}${state.solo.cuisines.size > 3 ? '…' : ''}`
-    : `Within ${state.solo.distance} miles of ${state.solo.location}`;
+    : `Within ${state.solo.distance + state.solo.radiusBoost} miles of ${state.solo.location}`;
   $('#results-sub').textContent = sub;
 
   state.solo.results.forEach((spot, i) => {
@@ -264,7 +315,9 @@ function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
 }
 
-$('#reroll-btn').onclick = () => $('#solo-find').click();
+$('#reroll-btn').onclick = () => reshuffleResults();
+const rerollTop = $('#reroll-top');
+if (rerollTop) rerollTop.onclick = () => reshuffleResults();
 
 function showDetail(spot) {
   state.lastMatch = spot;

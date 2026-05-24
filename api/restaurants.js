@@ -1,7 +1,6 @@
 export const config = { runtime: 'edge' };
 
 const GOOGLE_KEY = process.env.GOOGLE_PLACES_API_KEY;
-const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
 
 const PRICE_MAP = {
   '$':  { min: 0, max: 1 },
@@ -84,73 +83,37 @@ function inferCuisine(types, name) {
   return 'Restaurant';
 }
 
-async function curateWithClaude(places, params) {
-  if (!ANTHROPIC_KEY || places.length === 0) {
-    return places.slice(0, params.count).map(formatBasic);
-  }
-  const summary = places.slice(0, 15).map((p, i) => ({
-    i,
-    name: p.displayName?.text || 'Unknown',
-    cuisine: inferCuisine(p.types, p.displayName?.text),
-    rating: p.rating || 0,
-    reviews: p.userRatingCount || 0,
-    price: priceToSymbol({ 'PRICE_LEVEL_FREE': 0, 'PRICE_LEVEL_INEXPENSIVE': 1, 'PRICE_LEVEL_MODERATE': 2, 'PRICE_LEVEL_EXPENSIVE': 3, 'PRICE_LEVEL_VERY_EXPENSIVE': 4 }[p.priceLevel]),
-    editorial: p.editorialSummary?.text || '',
-    address: p.formattedAddress || '',
-  }));
-
-  const cravingText = params.cuisines.length ? `craving: ${params.cuisines.join(', ')}` : 'open to anything';
-  const vetoText = params.vetoes.length ? `vetoes (avoid): ${params.vetoes.join(', ')}` : '';
-
-  const prompt = `Pick the best ${params.count} restaurants for this group from the list below.
-
-Group context: ${cravingText}. ${vetoText} Price ${params.price}, within ${params.distance} mi of ${params.location}.
-
-Candidates:
-${JSON.stringify(summary, null, 0)}
-
-For each pick, write a 1-sentence vibe (max 12 words, descriptive of the place itself) and a 1-sentence why (max 15 words, why it fits THIS group's cravings/vetoes specifically).
-
-Return ONLY a JSON array of objects with: i (the index from candidates), vibe, why. No other text, no markdown fences.`;
-
-  try {
-    const r = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': ANTHROPIC_KEY,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 1500,
-        messages: [{ role: 'user', content: prompt }],
-      }),
-    });
-    if (!r.ok) {
-      const errText = await r.text();
-      console.error('Claude error:', errText);
-      return places.slice(0, params.count).map(formatBasic);
-    }
-    const data = await r.json();
-    const text = data.content.map(b => b.text || '').join('').replace(/```json|```/g, '').trim();
-    const picks = JSON.parse(text);
-    return picks.map(pick => {
-      const place = places[pick.i];
-      if (!place) return null;
-      return { ...formatBasic(place), vibe: pick.vibe, why: pick.why };
-    }).filter(Boolean);
-  } catch (e) {
-    console.error('Claude parse error:', e);
-    return places.slice(0, params.count).map(formatBasic);
-  }
+function generateVibe(p, cuisine) {
+  const rating = p.rating || 0;
+  const reviews = p.userRatingCount || 0;
+  const editorial = p.editorialSummary?.text;
+  if (editorial) return editorial;
+  if (rating >= 4.7 && reviews >= 300) return `A standout ${cuisine.toLowerCase()} spot locals can't stop talking about.`;
+  if (rating >= 4.5 && reviews >= 100) return `Well-loved ${cuisine.toLowerCase()} place with a loyal following.`;
+  if (rating >= 4.3) return `Solid ${cuisine.toLowerCase()} option with consistently good reviews.`;
+  if (reviews >= 500) return `A long-standing neighborhood ${cuisine.toLowerCase()} spot.`;
+  return `Local ${cuisine.toLowerCase()} restaurant worth a try.`;
 }
 
-function formatBasic(p) {
+function generateWhy(p, params, cuisine) {
+  const reasons = [];
+  const inCravings = params.cuisines.some(c => c.toLowerCase() === cuisine.toLowerCase());
+  if (inCravings) reasons.push(`matches your ${cuisine.toLowerCase()} craving`);
+  if (p.rating >= 4.6) reasons.push('crowd favorite');
+  if (p.currentOpeningHours?.openNow) reasons.push('open now');
+  if (params.price && priceToSymbol({ 'PRICE_LEVEL_FREE': 0, 'PRICE_LEVEL_INEXPENSIVE': 1, 'PRICE_LEVEL_MODERATE': 2, 'PRICE_LEVEL_EXPENSIVE': 3, 'PRICE_LEVEL_VERY_EXPENSIVE': 4 }[p.priceLevel]) === params.price) {
+    reasons.push(`fits your ${params.price} budget`);
+  }
+  if (reasons.length === 0) return `Highly rated nearby option.`;
+  return `Good pick — ${reasons.slice(0, 3).join(', ')}.`;
+}
+
+function formatRestaurant(p, params) {
+  const cuisine = inferCuisine(p.types, p.displayName?.text);
   return {
     id: p.id,
     name: p.displayName?.text || 'Unknown',
-    cuisine: inferCuisine(p.types, p.displayName?.text),
+    cuisine,
     priceLevel: priceToSymbol({ 'PRICE_LEVEL_FREE': 0, 'PRICE_LEVEL_INEXPENSIVE': 1, 'PRICE_LEVEL_MODERATE': 2, 'PRICE_LEVEL_EXPENSIVE': 3, 'PRICE_LEVEL_VERY_EXPENSIVE': 4 }[p.priceLevel]),
     rating: p.rating,
     reviewCount: p.userRatingCount,
@@ -160,8 +123,8 @@ function formatBasic(p) {
     website: p.websiteUri,
     openNow: p.currentOpeningHours?.openNow,
     location: p.location,
-    vibe: p.editorialSummary?.text || '',
-    why: '',
+    vibe: generateVibe(p, cuisine),
+    why: generateWhy(p, params, cuisine),
   };
 }
 
@@ -192,6 +155,7 @@ export default async function handler(req) {
 
     const allPlaces = [];
     const seen = new Set();
+    const excludeIds = new Set(params.excludeIds || []);
     for (const q of searchQueries) {
       const places = await searchPlaces({
         lat: geo.lat,
@@ -203,6 +167,7 @@ export default async function handler(req) {
       });
       for (const p of places) {
         if (seen.has(p.id)) continue;
+        if (excludeIds.has(p.id)) continue;
         seen.add(p.id);
         const name = (p.displayName?.text || '').toLowerCase();
         const cuisine = inferCuisine(p.types, p.displayName?.text);
@@ -223,14 +188,11 @@ export default async function handler(req) {
       return scoreB - scoreA;
     });
 
-    const top = placesWithDist.slice(0, 15);
-    const curated = await curateWithClaude(top, params);
-    const withDistance = curated.map(c => {
-      const orig = top.find(p => p.id === c.id);
-      return { ...c, distance: orig?._distance };
-    });
+    const count = params.count || 6;
+    const top = placesWithDist.slice(0, count);
+    const restaurants = top.map(p => ({ ...formatRestaurant(p, params), distance: p._distance }));
 
-    return new Response(JSON.stringify({ restaurants: withDistance, location: geo.formatted }), {
+    return new Response(JSON.stringify({ restaurants, location: geo.formatted }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
     });

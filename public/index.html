@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-<meta name="theme-color" content="#1a1410" />
-<title>Forknife — Where should we eat?</title>
+<meta name="theme-color" content="#ff6b6b" />
+<title>Foogle — Search engine for your next meal.</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT,WONK@9..144,400;9..144,500;9..144,700;9..144,900&family=Inter+Tight:wght@400;500;600&display=swap" rel="stylesheet">
@@ -13,12 +13,11 @@
 </head>
 <body>
 
-<div class="grain"></div>
+<div class="floaties" id="floaties"></div>
 
 <header class="topbar">
   <div class="logo">
-    <span class="logo-mark">F</span>
-    <span class="logo-text">forknife</span>
+    <span class="logo-next">F</span><span class="logo-bite">oogle</span>
   </div>
   <button class="icon-btn" id="info-btn" aria-label="About">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><path d="M12 16v-4M12 8h.01"/></svg>
@@ -29,23 +28,27 @@
 
   <section class="screen active" id="screen-home">
     <div class="hero">
-      <h1 class="display">Where<br>should we<br><em>eat?</em></h1>
-      <p class="lede">A decisive answer to the worst question of every evening.</p>
+      <h1 class="display">What's the<br><em>vibe</em><br>tonight?</h1>
+      <p class="lede">A search engine for your next meal. Less scrolling, more eating.</p>
     </div>
     <div class="mode-cards">
       <button class="mode-card" data-mode="solo">
-        <div class="mode-num">01</div>
+        <div class="mode-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11h18M5 11l1 9a2 2 0 002 2h8a2 2 0 002-2l1-9M9 5a3 3 0 016 0v6"/></svg>
+        </div>
         <div class="mode-body">
           <h3>Just pick for me</h3>
-          <p>Tell me what you're craving. I'll hand you six real options.</p>
+          <p>Tell me cravings. I'll hand you six.</p>
         </div>
         <div class="mode-arrow">→</div>
       </button>
       <button class="mode-card" data-mode="group">
-        <div class="mode-num">02</div>
+        <div class="mode-icon pink">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 7a4 4 0 100 8 4 4 0 000-8zM23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+        </div>
         <div class="mode-body">
           <h3>Settle a group debate</h3>
-          <p>Everyone swipes. We eat at the first mutual yes.</p>
+          <p>Everyone swipes. First match wins.</p>
         </div>
         <div class="mode-arrow">→</div>
       </button>
@@ -88,15 +91,21 @@
     </div>
 
     <button class="primary-btn" id="solo-find">
-      <span>Find us food</span>
+      <span>Foogle it</span>
       <span class="btn-arrow">→</span>
     </button>
   </section>
 
   <section class="screen" id="screen-results">
     <button class="back-btn" data-back="solo">← refine</button>
-    <h2 class="screen-title" id="results-title">Six options for you.</h2>
+    <h2 class="screen-title" id="results-title">Six results.</h2>
     <p class="results-sub" id="results-sub"></p>
+    <div class="reshuffle-top">
+      <button id="reroll-top">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14"><path d="M3 12a9 9 0 0 1 15-6.7L21 8M21 3v5h-5M21 12a9 9 0 0 1-15 6.7L3 16M3 21v-5h5"/></svg>
+        Not these? Reshuffle
+      </button>
+    </div>
     <div id="results-list"></div>
     <button class="ghost-btn" id="reroll-btn">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="16" height="16"><path d="M3 12a9 9 0 0 1 15-6.7L21 8M21 3v5h-5M21 12a9 9 0 0 1-15 6.7L3 16M3 21v-5h5"/></svg>
@@ -111,22 +120,22 @@
 
   <section class="screen" id="screen-group-start">
     <button class="back-btn" data-back="home">← back</button>
-    <h2 class="screen-title">Group decision time.</h2>
+    <h2 class="screen-title">Group search.</h2>
     <p class="lede-sm">Each person opens this app. The first mutual yes wins.</p>
 
     <div class="group-actions">
-      <button class="group-action create" id="create-room-btn">
+      <button class="group-action" id="create-room-btn">
         <div class="ga-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 5v14M5 12h14"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
         </div>
         <div class="ga-body">
           <h3>Start a new room</h3>
           <p>You set the parameters, share the code.</p>
         </div>
       </button>
-      <button class="group-action join" id="join-room-btn">
-        <div class="ga-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 7L4 12l5 5M4 12h16"/></svg>
+      <button class="group-action" id="join-room-btn">
+        <div class="ga-icon pink">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 7L4 12l5 5M4 12h16"/></svg>
         </div>
         <div class="ga-body">
           <h3>Join existing room</h3>
@@ -194,7 +203,7 @@
     <div class="presence-row" id="presence-row" hidden></div>
 
     <div class="swipe-area" id="swipe-area">
-      <div class="swipe-loading">Fetching spots…</div>
+      <div class="swipe-loading">Foogling…</div>
     </div>
 
     <div class="swipe-controls" id="swipe-controls" hidden>
@@ -230,13 +239,36 @@
 
 <dialog id="info-modal">
   <div class="modal-content">
-    <h3>About forknife</h3>
-    <p>The "where should we eat" debate, settled with restaurant data and a stubborn refusal to suggest 47 options.</p>
-    <p class="modal-fine">Built as a demo. Restaurant data from Google Places. Recommendations curated with Claude.</p>
+    <h3>About Foogle</h3>
+    <p>A search engine for your next meal. Solves the "where should we eat" debate with restaurant data and a stubborn refusal to suggest 47 options.</p>
+    <p class="modal-fine">Built as a demo. Restaurant data from Google Places.</p>
     <button class="primary-btn small" id="close-info">Got it</button>
   </div>
 </dialog>
 
+<script>
+  // Sprinkle animated food emojis around the page
+  const foods = ['🍕','🍔','🌮','🍣','🍩','🍦','🍜','🍱','🥑','🍓','🥐','🌯','🍪','🥗','🍰','🥟','🍤','🥖','🧁','🥞'];
+  const positions = [
+    { x: '6%',  y: '8%',  size: 28, dur: 6,   delay: 0 },
+    { x: '88%', y: '12%', size: 32, dur: 7,   delay: 1 },
+    { x: '4%',  y: '32%', size: 24, dur: 5.5, delay: 2 },
+    { x: '90%', y: '38%', size: 30, dur: 6.5, delay: 0.5 },
+    { x: '8%',  y: '58%', size: 26, dur: 7,   delay: 1.5 },
+    { x: '85%', y: '64%', size: 28, dur: 6,   delay: 2.5 },
+    { x: '5%',  y: '82%', size: 30, dur: 5.5, delay: 0.8 },
+    { x: '90%', y: '88%', size: 26, dur: 7.5, delay: 2 },
+  ];
+  const floaties = document.getElementById('floaties');
+  const shuffled = [...foods].sort(() => Math.random() - 0.5);
+  positions.forEach((p, i) => {
+    const el = document.createElement('div');
+    el.className = 'floatie';
+    el.textContent = shuffled[i % shuffled.length];
+    el.style.cssText = `left:${p.x};top:${p.y};font-size:${p.size}px;animation-duration:${p.dur}s;animation-delay:${p.delay}s;`;
+    floaties.appendChild(el);
+  });
+</script>
 <script type="module" src="app.js"></script>
 </body>
 </html>
