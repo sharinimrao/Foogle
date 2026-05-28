@@ -71,6 +71,9 @@ function inferCuisine(types, name) {
   const n = (name || '').toLowerCase();
   const combo = t + ' ' + n;
   const map = [
+    ['boba', 'Boba'], ['bubble_tea', 'Boba'], ['bubble tea', 'Boba'],
+    ['juice', 'Smoothies/Juice'], ['smoothie', 'Smoothies/Juice'],
+    ['bar', 'Bars'], ['cocktail', 'Bars'], ['pub', 'Bars'],
     ['pizza', 'Pizza'], ['burger', 'Burgers'], ['mexican', 'Mexican'], ['chinese', 'Chinese'],
     ['thai', 'Thai'], ['japanese', 'Japanese'], ['sushi', 'Sushi'], ['italian', 'Italian'],
     ['indian', 'Indian'], ['barbecue', 'BBQ'], ['bbq', 'BBQ'], ['mediterranean', 'Mediterranean'],
@@ -146,12 +149,21 @@ export default async function handler(req) {
     const radiusMeters = Math.min(50000, (params.distance || 5) * 1609);
     const priceRange = PRICE_MAP[params.price] || PRICE_MAP['$$'];
 
-    let searchQueries;
-    if (params.cuisines && params.cuisines.length > 0) {
-      searchQueries = params.cuisines.slice(0, 3).map(c => `${c} restaurant`);
-    } else {
-      searchQueries = ['restaurant'];
-    }
+    const CATEGORY_QUERIES = {
+  'Boba': ['boba tea shop', 'bubble tea'],
+  'Bars': ['cocktail bar', 'bar'],
+  'Smoothies/Juice': ['smoothie shop', 'juice bar'],
+};
+
+let searchQueries;
+if (params.cuisines && params.cuisines.length > 0) {
+  searchQueries = params.cuisines.slice(0, 3).flatMap(c => {
+    if (CATEGORY_QUERIES[c]) return CATEGORY_QUERIES[c];
+    return [`${c} restaurant`];
+  });
+} else {
+  searchQueries = ['restaurant'];
+}
 
     const allPlaces = [];
     const seen = new Set();

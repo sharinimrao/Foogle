@@ -1,4 +1,4 @@
-const CUISINES = ['Pizza','Burgers','Mexican','Chinese','Thai','Japanese','Italian','Indian','BBQ','Sushi','Mediterranean','Vietnamese','Korean','American','Breakfast','Seafood','Vegetarian','Dessert'];
+cconst CUISINES = ['Pizza','Burgers','Mexican','Chinese','Thai','Japanese','Italian','Indian','BBQ','Sushi','Mediterranean','Vietnamese','Korean','American','Breakfast','Seafood','Vegetarian','Dessert','Boba','Bars','Smoothies/Juice'];
 const PRICES = ['$','$$','$$$','$$$$'];
 
 let PUSHER_CONFIG = null;
