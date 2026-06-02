@@ -184,6 +184,22 @@ $('#use-my-location').onclick = () => {
     }
   );
 };
+$('#use-my-location-group').onclick = () => {
+  if (!navigator.geolocation) { toast('Geolocation not available'); return; }
+  $('#use-my-location-group').textContent = 'Locating…';
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      const { latitude, longitude } = pos.coords;
+      $('#group-location').value = `${latitude.toFixed(4)},${longitude.toFixed(4)}`;
+      $('#group-location').dataset.coords = `${latitude},${longitude}`;
+      $('#use-my-location-group').textContent = 'Location set ✓';
+    },
+    () => {
+      $('#use-my-location-group').textContent = 'Use my location';
+      toast('Could not get location');
+    }
+  );
+};
 
 $('#solo-find').onclick = async () => {
   const loc = $('#solo-location').value.trim();
