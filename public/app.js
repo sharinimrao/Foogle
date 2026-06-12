@@ -172,11 +172,20 @@ $('#use-my-location').onclick = () => {
   if (!navigator.geolocation) { toast('Geolocation not available'); return; }
   $('#use-my-location').textContent = 'Locating…';
   navigator.geolocation.getCurrentPosition(
-    (pos) => {
+    async (pos) => {
       const { latitude, longitude } = pos.coords;
-      $('#solo-location').value = `${latitude.toFixed(4)},${longitude.toFixed(4)}`;
       $('#solo-location').dataset.coords = `${latitude},${longitude}`;
-      $('#use-my-location').textContent = 'Location set ✓';
+      try {
+        const r = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`);
+        const data = await r.json();
+        const addr = data.address;
+        const readable = addr.neighbourhood || addr.suburb || addr.city_district || addr.city || addr.town || `${latitude.toFixed(4)},${longitude.toFixed(4)}`;
+        $('#solo-location').value = readable;
+        $('#use-my-location').textContent = 'Location set ✓';
+      } catch {
+        $('#solo-location').value = `${latitude.toFixed(4)},${longitude.toFixed(4)}`;
+        $('#use-my-location').textContent = 'Location set ✓';
+      }
     },
     () => {
       $('#use-my-location').textContent = 'Use my location';
