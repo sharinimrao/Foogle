@@ -203,9 +203,9 @@ $('#use-my-location-group').onclick = () => {
       $('#group-location').dataset.coords = `${latitude},${longitude}`;
       $('#use-my-location-group').textContent = 'Location set ✓';
     },
-    () => {
-      $('#use-my-location-group').textContent = 'Use my location';
-      toast('Could not get location');
+    (err) => {
+      $('#use-my-location').textContent = 'Use my location';
+      toast(`Location error: ${err.code} - ${err.message}`);
     }
   );
 };
