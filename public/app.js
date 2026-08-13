@@ -9,20 +9,6 @@ const QUICKPICKS = [
 const DIETARY_OPTIONS = ['Gluten-Free', 'Vegetarian'];
 function foodIcon(sizeClass = 'icon-md') { return icon('ramen', sizeClass); }
 
-const MOCK_FRIENDS = [
-  { name: 'Maya Chen', wishlist: [
-    { name: 'Ramen Shop', cuisine: 'Japanese', priceLevel: '$$', neighborhood: 'Berkeley, CA' },
-    { name: 'Casa Verde', cuisine: 'Mexican', priceLevel: '$$', neighborhood: 'Oakland, CA' },
-  ]},
-  { name: 'Jordan Lee', wishlist: [
-    { name: 'The Copper Pot', cuisine: 'American', priceLevel: '$$$', neighborhood: 'San Francisco, CA' },
-  ]},
-  { name: 'Priya Patel', wishlist: [
-    { name: 'Spice Route', cuisine: 'Indian', priceLevel: '$$', neighborhood: 'Emeryville, CA' },
-    { name: 'Bao House', cuisine: 'Chinese', priceLevel: '$', neighborhood: 'Berkeley, CA' },
-  ]},
-];
-
 const TOPBAR_SCREENS = new Set(['home', 'room', 'match']);
 const BOTTOM_NAV_SCREENS = new Set(['home', 'saved', 'wishlist', 'friends', 'profile']);
 
@@ -46,13 +32,15 @@ function getOrCreateVoterId() {
   return id;
 }
 
-function getOrCreateUserName() {
-  let name = localStorage.getItem('forknife:userName');
+// Fallback display name for anonymous group-room participants (no account
+// needed to join a swipe room via a shared link).
+function getOrCreateAnonName() {
+  let name = localStorage.getItem('forknife:anonName');
   if (!name) {
     const adjectives = ['Hungry', 'Picky', 'Curious', 'Easy', 'Snacky', 'Choosy', 'Ready', 'Patient'];
     const nouns = ['Diner', 'Friend', 'Guest', 'Pal', 'Eater', 'Voter'];
     name = `${adjectives[Math.floor(Math.random() * adjectives.length)]} ${nouns[Math.floor(Math.random() * nouns.length)]}`;
-    localStorage.setItem('forknife:userName', name);
+    localStorage.setItem('forknife:anonName', name);
   }
   return name;
 }
@@ -80,7 +68,6 @@ const state = {
     myVotes: {},
     matchedSpots: [],
     voterId: getOrCreateVoterId(),
-    userName: getOrCreateUserName(),
     pusherClient: null,
     channel: null,
     members: {},
@@ -90,6 +77,12 @@ const state = {
   },
   lastMatch: null,
   recents: JSON.parse(localStorage.getItem('forknife:recents') || '[]'),
+  currentUser: null,
+  dietaryPreferences: new Set(),
+  beenThereCount: 0,
+  wishlistCount: 0,
+  authMode: 'login',
+  viewingFriend: null,
 };
 
 function $(sel) { return document.querySelector(sel); }
@@ -629,17 +622,12 @@ async function postFinish() {
   } catch (e) { console.error(e); }
 }
 
-function sourceFriendFor(spot, index) {
-  if (index % 3 !== 1) return null;
-  return MOCK_FRIENDS[index % MOCK_FRIENDS.length];
-}
-
 function createSwipeCard(spot, stackPos) {
   const card = document.createElement('div');
   card.className = 'swipe-card' + (stackPos === 1 ? ' stacked-1' : stackPos === 2 ? ' stacked-2' : '');
   const curatedLabel = state.group.roomCode ? '-Curated for the Group-' : '-Curated for You-';
   const dietaryTag = getDietaryPrefs().values().next().value;
-  const friend = sourceFriendFor(spot, state.group.swipeIndex);
+  const friend = spot.sourceFriend;
   card.innerHTML = `
     <div class="sc-curated">${curatedLabel}</div>
     <hr class="sc-divider" />
@@ -767,7 +755,7 @@ async function connectToRoom() {
     channelAuthorization: {
       endpoint: '/api/pusher-auth',
       transport: 'ajax',
-      params: { user_name: state.group.userName },
+      params: { user_name: state.currentUser ? state.currentUser.name : getOrCreateAnonName() },
     },
   });
   state.group.pusherClient = pusher;
@@ -1018,8 +1006,7 @@ function showMatch(spot) {
   $('#match-meta').textContent = `${spot.cuisine} · ${spot.priceLevel || '$$'} · ${spot.neighborhood || ''}`;
   $('#match-why').textContent = spot.why || spot.vibe || '';
   const dietaryTag = getDietaryPrefs().values().next().value;
-  const spotIndex = state.group.candidates.findIndex(c => (c.id || c.name) === (spot.id || spot.name));
-  const friend = sourceFriendFor(spot, spotIndex >= 0 ? spotIndex : 0);
+  const friend = spot.sourceFriend;
   $('#match-tags').innerHTML = `
     <span class="match-tag">${escapeHtml(dietaryTag || spot.cuisine)}</span>
     ${friend ? `<span class="match-tag">${escapeHtml(friend.name.split(' ')[0])}'s list</span>` : ''}
@@ -1094,24 +1081,70 @@ $('#match-back').onclick = () => {
 };
 
 /* ---------- Onboarding / Login ----------
-   Cosmetic only — there's no account backend. "Logging in" just captures
-   a local display name (same mechanism group mode already uses) and
-   unlocks the app; nothing is sent anywhere or verified. */
+   Real accounts backed by Postgres — see api/auth/*. The Google button is a
+   plain link (full-page redirect, no JS needed); email/password go through
+   fetch below. Either path lands on the auth-loading screen while the
+   request is in flight, then on home once the session is confirmed. */
 $('#onboarding-start').onclick = () => {
   localStorage.setItem('forknife:onboarded', '1');
-  show(localStorage.getItem('forknife:loggedIn') ? 'home' : 'login');
+  show('login');
 };
 
-function completeLogin() {
-  localStorage.setItem('forknife:loggedIn', '1');
-  getOrCreateUserName();
-  show('home');
-  buildProfileScreen();
-  renderRecents();
+function setAuthMode(mode) {
+  state.authMode = mode;
+  $('#login-name-field').hidden = mode !== 'signup';
+  $('#login-submit').querySelector('span').textContent = mode === 'signup' ? 'Sign Up' : 'Log In';
+  $('#login-switch-label').textContent = mode === 'signup' ? 'Already have an account? ' : 'New here? ';
+  $('#login-signup-toggle').textContent = mode === 'signup' ? 'Log In' : 'Sign Up';
+  $('#login-error').hidden = true;
 }
-$('#login-google-btn').onclick = completeLogin;
-$('#login-submit').onclick = completeLogin;
-$('#login-signup-toggle').onclick = completeLogin;
+$('#login-signup-toggle').onclick = () => setAuthMode(state.authMode === 'signup' ? 'login' : 'signup');
+
+async function hydrateCurrentUser() {
+  try {
+    const r = await fetch('/api/me');
+    if (!r.ok) { state.currentUser = null; state.dietaryPreferences = new Set(); return false; }
+    const data = await r.json();
+    state.currentUser = data.user;
+    state.dietaryPreferences = new Set(data.dietaryPreferences || []);
+    state.beenThereCount = data.beenThereCount || 0;
+    state.wishlistCount = data.wishlistCount || 0;
+    return true;
+  } catch (e) {
+    state.currentUser = null;
+    state.dietaryPreferences = new Set();
+    return false;
+  }
+}
+
+$('#login-submit').onclick = async () => {
+  const email = $('#login-email').value.trim();
+  const password = $('#login-password').value;
+  const name = $('#login-name').value.trim();
+  const errorEl = $('#login-error');
+  errorEl.hidden = true;
+
+  if (!email || !password) { errorEl.textContent = 'Enter your email and password'; errorEl.hidden = false; return; }
+  if (state.authMode === 'signup' && !name) { errorEl.textContent = 'Enter your name'; errorEl.hidden = false; return; }
+
+  $('#auth-loading-title').textContent = state.authMode === 'signup' ? 'Setting your table…' : 'Pulling up your seat…';
+  show('auth-loading');
+  try {
+    const endpoint = state.authMode === 'signup' ? '/api/auth/signup' : '/api/auth/login';
+    const body = state.authMode === 'signup' ? { email, password, name } : { email, password };
+    const r = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error || 'Something went wrong');
+    await hydrateCurrentUser();
+    show('home');
+    buildProfileScreen();
+    renderRecents();
+  } catch (e) {
+    show('login');
+    errorEl.textContent = e.message;
+    errorEl.hidden = false;
+  }
+};
 
 /* ---------- Bottom nav ---------- */
 $$('#bottom-nav button').forEach(b => {
@@ -1123,10 +1156,25 @@ $$('#bottom-nav button').forEach(b => {
   };
 });
 
-/* ---------- Saved: Been There / Wish List (localStorage-backed) ---------- */
-function savedKey(tab) { return tab === 'been' ? 'forknife:beenThere' : 'forknife:wishlist'; }
-function getSavedList(tab) { return JSON.parse(localStorage.getItem(savedKey(tab)) || '[]'); }
-function setSavedList(tab, list) { localStorage.setItem(savedKey(tab), JSON.stringify(list)); }
+/* ---------- Saved: Been There / Wish List (Postgres-backed) ---------- */
+async function fetchBeenThere() {
+  const r = await fetch('/api/been-there');
+  if (!r.ok) return [];
+  return (await r.json()).places || [];
+}
+async function fetchWishList() {
+  const r = await fetch('/api/wish-list');
+  if (!r.ok) return [];
+  return (await r.json()).places || [];
+}
+async function addBeenThere(spot) {
+  return fetch('/api/been-there', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(spot) });
+}
+async function addWishList(spot) {
+  return fetch('/api/wish-list', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(spot) });
+}
+async function removeBeenThere(id) { await fetch(`/api/been-there/${id}`, { method: 'DELETE' }); }
+async function removeWishList(id) { await fetch(`/api/wish-list/${id}`, { method: 'DELETE' }); }
 
 function renderPlaceList(containerSel, items, { emptyText, onRemove }) {
   const list = $(containerSel);
@@ -1134,35 +1182,35 @@ function renderPlaceList(containerSel, items, { emptyText, onRemove }) {
     list.innerHTML = `<div class="empty-state"><div class="icon">${foodIcon('icon-xl')}</div><p>${emptyText}</p></div>`;
     return;
   }
-  list.innerHTML = items.map((r, i) => `
+  list.innerHTML = items.map((r) => `
     <div class="saved-item">
       <div class="saved-item-icon">${foodIcon('icon-md')}</div>
       <div class="saved-item-body"><div class="saved-item-name">${escapeHtml(r.name)}</div></div>
       <div class="saved-item-meta">${escapeHtml(r.cuisine)} ${escapeHtml(r.priceLevel || '')}<br>${escapeHtml(r.neighborhood || '')}</div>
-      ${onRemove ? `<button class="saved-item-remove" data-remove="${i}" aria-label="Remove">×</button>` : ''}
+      ${onRemove ? `<button class="saved-item-remove" data-remove="${r.id}" aria-label="Remove">×</button>` : ''}
     </div>
   `).join('');
   if (onRemove) {
     $$(`${containerSel} [data-remove]`).forEach(btn => {
-      btn.onclick = () => onRemove(parseInt(btn.dataset.remove));
+      btn.onclick = () => onRemove(btn.dataset.remove);
     });
   }
 }
 
-function buildSavedScreen() {
+async function buildSavedScreen() {
+  const places = await fetchBeenThere();
+  state.beenThereCount = places.length;
   const q = $('#saved-search').value.trim().toLowerCase();
-  const items = getSavedList('been').filter(r => !q || r.name.toLowerCase().includes(q));
+  const items = places.filter(r => !q || r.name.toLowerCase().includes(q));
   renderPlaceList('#saved-list', items, {
     emptyText: "You haven't marked anywhere as visited yet.",
-    onRemove: (i) => { setSavedList('been', getSavedList('been').filter((_, idx) => idx !== i)); buildSavedScreen(); },
+    onRemove: async (id) => { await removeBeenThere(id); buildSavedScreen(); },
   });
 }
 $('#saved-search').oninput = () => buildSavedScreen();
 $('#mark-visited-btn').onclick = () => openMarkVisitedModal('been');
 
-state.viewingFriend = null;
-
-function buildWishlistScreen(friend = null) {
+async function buildWishlistScreen(friend = null) {
   state.viewingFriend = friend;
   const backBtn = $('#wishlist-back');
   const searchBar = $('#wishlist-search-bar');
@@ -1172,17 +1220,25 @@ function buildWishlistScreen(friend = null) {
     $('#wishlist-sub').textContent = `Places ${first} wants to try…`;
     backBtn.hidden = false;
     searchBar.hidden = true;
-    renderPlaceList('#wishlist-list', friend.wishlist, { emptyText: 'Nothing on this wish list yet.' });
+    try {
+      const r = await fetch(`/api/friends/${friend.id}/wishlist`);
+      const data = r.ok ? await r.json() : { places: [] };
+      renderPlaceList('#wishlist-list', data.places || [], { emptyText: 'Nothing on this wish list yet.' });
+    } catch (e) {
+      renderPlaceList('#wishlist-list', [], { emptyText: 'Could not load this wish list.' });
+    }
   } else {
     $('#wishlist-title').textContent = 'Wish List';
     $('#wishlist-sub').textContent = 'Places on the bucket list….';
     backBtn.hidden = true;
     searchBar.hidden = false;
+    const places = await fetchWishList();
+    state.wishlistCount = places.length;
     const q = $('#wishlist-search').value.trim().toLowerCase();
-    const items = getSavedList('wish').filter(r => !q || r.name.toLowerCase().includes(q));
+    const items = places.filter(r => !q || r.name.toLowerCase().includes(q));
     renderPlaceList('#wishlist-list', items, {
       emptyText: 'Nothing on your wish list yet — search above to add a place.',
-      onRemove: (i) => { setSavedList('wish', getSavedList('wish').filter((_, idx) => idx !== i)); buildWishlistScreen(); },
+      onRemove: async (id) => { await removeWishList(id); buildWishlistScreen(); },
     });
   }
 }
@@ -1213,13 +1269,11 @@ $('#mark-visited-search-btn').onclick = async () => {
       ? results.map((r, i) => `<div class="saved-item" data-add="${i}" style="cursor:pointer;"><div class="saved-item-icon">${foodIcon('icon-md')}</div><div class="saved-item-body"><div class="saved-item-name">${escapeHtml(r.name)}</div></div><div class="saved-item-meta">${escapeHtml(r.cuisine)}</div></div>`).join('')
       : '<p class="modal-fine">No results — try a different search.</p>';
     $$('#mark-visited-results [data-add]').forEach(el => {
-      el.onclick = () => {
+      el.onclick = async () => {
         const spot = results[parseInt(el.dataset.add)];
-        const list = getSavedList(markVisitedTargetTab);
-        if (!list.some(x => x.name === spot.name)) list.push(spot);
-        setSavedList(markVisitedTargetTab, list);
+        if (markVisitedTargetTab === 'been') await addBeenThere(spot); else await addWishList(spot);
         $('#mark-visited-modal').close();
-        if (markVisitedTargetTab === 'been') buildSavedScreen(); else buildWishlistScreen();
+        if (markVisitedTargetTab === 'been') await buildSavedScreen(); else await buildWishlistScreen();
         toast(markVisitedTargetTab === 'been' ? 'Marked as visited' : 'Added to wish list');
       };
     });
@@ -1230,54 +1284,133 @@ $('#mark-visited-search-btn').onclick = async () => {
   }
 };
 
-/* ---------- Friends ---------- */
-function buildFriendsScreen() {
-  const q = $('#friends-search').value.trim().toLowerCase();
-  const friends = MOCK_FRIENDS.filter(f => !q || f.name.toLowerCase().includes(q));
-  const list = $('#friends-list');
-  if (friends.length === 0) {
-    list.innerHTML = `<div class="empty-state"><p>No friends match "${escapeHtml(q)}".</p></div>`;
-    return;
-  }
-  list.innerHTML = friends.map((f, i) => `
-    <div class="friend-row">
-      <span class="friend-name">${escapeHtml(f.name)}</span>
-      <button class="friend-list-chip" data-friend="${i}">${escapeHtml(f.name.split(' ')[0])}'s Wishlist</button>
-    </div>
-  `).join('');
-  $$('#friends-list [data-friend]').forEach(btn => {
-    btn.onclick = () => {
-      buildWishlistScreen(friends[parseInt(btn.dataset.friend)]);
-      show('wishlist');
-    };
-  });
+/* ---------- Friends (Postgres-backed) ---------- */
+async function buildFriendsScreen() {
+  await renderFriendsList();
+  await renderFriendSearchResults();
 }
-$('#friends-search').oninput = () => buildFriendsScreen();
+
+async function renderFriendsList() {
+  const list = $('#friends-list');
+  try {
+    const r = await fetch('/api/friends');
+    const friends = r.ok ? (await r.json()).friends || [] : [];
+    if (friends.length === 0) {
+      list.innerHTML = `<div class="empty-state"><p>No friends yet — search above to add some.</p></div>`;
+      return;
+    }
+    list.innerHTML = `<div class="friends-section-label">Your friends</div>` + friends.map(f => `
+      <div class="friend-row">
+        <span class="friend-name">${escapeHtml(f.name)}</span>
+        <button class="friend-list-chip" data-friend-id="${f.id}" data-friend-name="${escapeHtml(f.name)}">${escapeHtml(f.name.split(' ')[0])}'s Wishlist</button>
+      </div>
+    `).join('');
+    $$('#friends-list [data-friend-id]').forEach(btn => {
+      btn.onclick = () => {
+        buildWishlistScreen({ id: btn.dataset.friendId, name: btn.dataset.friendName });
+        show('wishlist');
+      };
+    });
+  } catch (e) {
+    list.innerHTML = `<div class="empty-state"><p>Could not load friends.</p></div>`;
+  }
+}
+
+async function renderFriendSearchResults() {
+  const q = $('#friends-search').value.trim();
+  const resultsEl = $('#friends-search-results');
+  if (q.length < 2) { resultsEl.innerHTML = ''; return; }
+  try {
+    const r = await fetch(`/api/users/search?q=${encodeURIComponent(q)}`);
+    const users = r.ok ? (await r.json()).users || [] : [];
+    if (users.length === 0) {
+      resultsEl.innerHTML = `<div class="friends-section-label">Search results</div><p class="modal-fine">No one found.</p>`;
+      return;
+    }
+    resultsEl.innerHTML = `<div class="friends-section-label">Search results</div>` + users.map(u => `
+      <div class="friend-row">
+        <span class="friend-name">${escapeHtml(u.name)}</span>
+        <button class="friend-add-btn" data-add-id="${u.id}" ${u.isFriend ? 'disabled' : ''}>${u.isFriend ? 'Friends' : '+ Add'}</button>
+      </div>
+    `).join('');
+    $$('#friends-search-results [data-add-id]').forEach(btn => {
+      btn.onclick = async () => {
+        btn.disabled = true;
+        btn.textContent = 'Adding…';
+        try {
+          const r = await fetch('/api/friends/add', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ friendId: btn.dataset.addId }),
+          });
+          if (!r.ok) throw new Error();
+          toast('Friend added');
+          buildFriendsScreen();
+        } catch (e) {
+          btn.disabled = false;
+          btn.textContent = '+ Add';
+          toast('Could not add friend');
+        }
+      };
+    });
+  } catch (e) {
+    resultsEl.innerHTML = '';
+  }
+}
+$('#friends-search').oninput = () => renderFriendSearchResults();
 
 /* ---------- Profile ---------- */
-function getDietaryPrefs() { return new Set(JSON.parse(localStorage.getItem('forknife:dietaryPrefs') || '[]')); }
+function getDietaryPrefs() { return state.dietaryPreferences; }
 
-function buildProfileScreen() {
-  const name = getOrCreateUserName();
-  $('#profile-name').textContent = name;
-  $('#profile-avatar').textContent = (name.trim()[0] || '?').toUpperCase();
-  $('#profile-been-count').textContent = getSavedList('been').length;
-  $('#profile-wishlist-count').textContent = getSavedList('wish').length;
+async function setDietaryPrefs(set) {
+  state.dietaryPreferences = set;
+  try {
+    await fetch('/api/users/dietary', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ preferences: Array.from(set) }),
+    });
+  } catch (e) { console.error(e); }
+}
+
+async function buildProfileScreen() {
+  const user = state.currentUser;
+  if (!user) return;
+  $('#profile-name').textContent = user.name;
+  $('#profile-avatar').textContent = (user.name.trim()[0] || '?').toUpperCase();
+  $('#profile-been-count').textContent = state.beenThereCount;
+  $('#profile-wishlist-count').textContent = state.wishlistCount;
+  const friendsCountEl = $('#profile-friends-count');
+  if (friendsCountEl) {
+    try {
+      const r = await fetch('/api/friends');
+      friendsCountEl.textContent = r.ok ? ((await r.json()).friends || []).length : 0;
+    } catch (e) { friendsCountEl.textContent = 0; }
+  }
   renderDietary('#profile-dietary', getDietaryPrefs(), (opt) => {
     const set = getDietaryPrefs();
     if (set.has(opt)) set.delete(opt); else set.add(opt);
-    localStorage.setItem('forknife:dietaryPrefs', JSON.stringify(Array.from(set)));
+    setDietaryPrefs(set);
     buildProfileScreen();
   });
 }
 
 $('#profile-edit-btn').onclick = () => {
-  $('#profile-name-input').value = getOrCreateUserName();
+  $('#profile-name-input').value = state.currentUser ? state.currentUser.name : '';
   $('#edit-profile-modal').showModal();
 };
-$('#profile-name-save').onclick = () => {
+$('#profile-name-save').onclick = async () => {
   const val = $('#profile-name-input').value.trim();
-  if (val) localStorage.setItem('forknife:userName', val);
+  if (val) {
+    try {
+      const r = await fetch('/api/users/me', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: val }),
+      });
+      if (r.ok) state.currentUser = (await r.json()).user;
+    } catch (e) { console.error(e); }
+  }
   $('#edit-profile-modal').close();
   buildProfileScreen();
 };
@@ -1285,20 +1418,49 @@ $('#profile-been-link').onclick = () => { buildSavedScreen(); show('saved'); };
 $('#profile-wishlist-link').onclick = () => { buildWishlistScreen(); show('wishlist'); };
 $('#profile-friends-link').onclick = () => { buildFriendsScreen(); show('friends'); };
 $('#profile-settings-link').onclick = () => toast('Settings coming soon');
+$('#profile-logout-btn').onclick = async () => {
+  try { await fetch('/api/auth/logout', { method: 'POST' }); } catch (e) { console.error(e); }
+  state.currentUser = null;
+  state.dietaryPreferences = new Set();
+  show('login');
+};
 
 /* ---------- Init ---------- */
-const urlParams = new URLSearchParams(window.location.search);
-const joinCode = urlParams.get('join');
-if (joinCode) {
-  show('group-start');
-  $('#room-code-input').value = joinCode.toUpperCase().slice(0, 4);
-  if ($('#room-code-input').value.length === 4) $('#join-confirm').click();
-} else if (!localStorage.getItem('forknife:onboarded')) {
-  show('onboarding');
-} else if (!localStorage.getItem('forknife:loggedIn')) {
-  show('login');
-} else {
-  show('home');
-}
+async function init() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const joinCode = urlParams.get('join');
+  const authError = urlParams.get('authError');
+  const justAuthed = urlParams.get('authed') === 'google';
+  if (authError) toast('Google sign-in did not go through — try again or use email.');
 
-renderRecents();
+  if (joinCode) {
+    await hydrateCurrentUser();
+    show('group-start');
+    $('#room-code-input').value = joinCode.toUpperCase().slice(0, 4);
+    if ($('#room-code-input').value.length === 4) $('#join-confirm').click();
+    renderRecents();
+    return;
+  }
+
+  if (!localStorage.getItem('forknife:onboarded')) {
+    show('onboarding');
+    return;
+  }
+
+  if (justAuthed) {
+    window.history.replaceState({}, '', window.location.pathname);
+    $('#auth-loading-title').textContent = 'Setting your table…';
+    show('auth-loading');
+    const ok = await hydrateCurrentUser();
+    if (ok) { show('home'); buildProfileScreen(); }
+    else { show('login'); toast('Sign-in did not complete — try again.'); }
+    renderRecents();
+    return;
+  }
+
+  const ok = await hydrateCurrentUser();
+  if (ok) { show('home'); buildProfileScreen(); }
+  else { show('login'); }
+  renderRecents();
+}
+init();

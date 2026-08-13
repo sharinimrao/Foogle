@@ -6,6 +6,7 @@
   "type": "module",
   "dependencies": {
     "@vercel/kv": "^2.0.0",
+    "@vercel/postgres": "^0.10.0",
     "pusher": "^5.2.0"
   },
   "engines": {

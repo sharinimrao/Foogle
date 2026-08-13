@@ -1,4 +1,5 @@
-export const config = { runtime: 'edge' };
+import { sql } from './_db.js';
+import { getSessionUser } from './_auth.js';
 
 const GOOGLE_KEY = process.env.GOOGLE_PLACES_API_KEY;
 
@@ -131,15 +132,57 @@ function formatRestaurant(p, params) {
   };
 }
 
-export default async function handler(req) {
+// Tags candidates with sourceFriend: {id, name} when a friend has that place
+// on their Been There or Wish List. Best-effort — never blocks the search.
+async function annotateFriendSources(req, restaurants) {
+  try {
+    if (!process.env.POSTGRES_URL || restaurants.length === 0) return;
+    const user = await getSessionUser(req);
+    if (!user) return;
+
+    const { rows: friends } = await sql`
+      SELECT u.id, u.name FROM friendships f JOIN users u ON u.id = f.friend_id
+      WHERE f.user_id = ${user.id} AND f.status = 'accepted'
+    `;
+    if (friends.length === 0) return;
+    const friendIds = friends.map(f => f.id);
+    const friendNameById = new Map(friends.map(f => [f.id, f.name]));
+    const candidateNames = restaurants.map(r => r.name);
+
+    const { rows: matches } = await sql`
+      SELECT user_id, restaurant_name FROM (
+        SELECT user_id, restaurant_name FROM been_there
+        UNION
+        SELECT user_id, restaurant_name FROM wish_list
+      ) t WHERE user_id = ANY(${friendIds}) AND restaurant_name = ANY(${candidateNames})
+    `;
+    if (matches.length === 0) return;
+
+    const sourceByLowerName = new Map();
+    for (const m of matches) {
+      const key = m.restaurant_name.toLowerCase();
+      if (!sourceByLowerName.has(key)) {
+        sourceByLowerName.set(key, { id: m.user_id, name: friendNameById.get(m.user_id) });
+      }
+    }
+    for (const r of restaurants) {
+      const source = sourceByLowerName.get(r.name.toLowerCase());
+      if (source) r.sourceFriend = source;
+    }
+  } catch (e) {
+    console.error('Friend-source annotation skipped:', e);
+  }
+}
+
+export default async function handler(req, res) {
   if (req.method !== 'POST') {
-    return new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405 });
+    return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
-    const params = await req.json();
+    const params = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
     if (!GOOGLE_KEY) {
-      return new Response(JSON.stringify({ error: 'Server missing GOOGLE_PLACES_API_KEY' }), { status: 500 });
+      return res.status(500).json({ error: 'Server missing GOOGLE_PLACES_API_KEY' });
     }
 
     const geo = params.coords
@@ -204,12 +247,11 @@ if (params.cuisines && params.cuisines.length > 0) {
     const top = placesWithDist.slice(0, count);
     const restaurants = top.map(p => ({ ...formatRestaurant(p, params), distance: p._distance }));
 
-    return new Response(JSON.stringify({ restaurants, location: geo.formatted }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    await annotateFriendSources(req, restaurants);
+
+    return res.status(200).json({ restaurants, location: geo.formatted });
   } catch (e) {
     console.error('Handler error:', e);
-    return new Response(JSON.stringify({ error: e.message || 'Server error' }), { status: 500 });
+    return res.status(500).json({ error: e.message || 'Server error' });
   }
 }

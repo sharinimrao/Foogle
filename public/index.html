@@ -170,18 +170,31 @@
   <section class="screen" id="screen-login">
     <div class="login-screen">
       <img class="login-logo" src="assets/logo.png" alt="Fed Up" />
-      <button class="google-btn" id="login-google-btn">Continue with Google</button>
+      <a class="google-btn" id="login-google-btn" href="/api/auth/google">Continue with Google</a>
       <div class="login-divider">OR</div>
+      <div class="login-field" id="login-name-field" hidden>
+        <label for="login-name">Name:</label>
+        <input type="text" id="login-name" autocomplete="off" />
+      </div>
       <div class="login-field">
         <label for="login-email">Email:</label>
-        <input type="text" id="login-email" autocomplete="off" />
+        <input type="email" id="login-email" autocomplete="off" />
       </div>
       <div class="login-field">
         <label for="login-password">Password:</label>
-        <input type="text" id="login-password" autocomplete="off" />
+        <input type="password" id="login-password" autocomplete="off" />
       </div>
+      <p class="login-error" id="login-error" hidden></p>
       <button class="primary-btn" id="login-submit"><span>Log In</span></button>
-      <div class="login-switch">New here? <button type="button" class="link-inline" id="login-signup-toggle">Sign Up</button></div>
+      <div class="login-switch"><span id="login-switch-label">New here? </span><button type="button" class="link-inline" id="login-signup-toggle">Sign Up</button></div>
+    </div>
+  </section>
+
+  <section class="screen" id="screen-auth-loading">
+    <div class="splash-screen">
+      <img class="splash-mascot bob" src="assets/mascot.png" alt="" />
+      <h1 class="splash-title" id="auth-loading-title">Setting your table…</h1>
+      <div class="splash-dots"><span></span><span></span><span></span><span></span><span></span></div>
     </div>
   </section>
 
@@ -472,6 +485,7 @@
       <svg class="icon icon-sm"><use href="#i-search"></use></svg>
       <input type="text" id="friends-search" placeholder="Find your friends…" autocomplete="off" />
     </div>
+    <div id="friends-search-results"></div>
     <div id="friends-list"></div>
   </section>
 
@@ -509,6 +523,7 @@
         <span class="profile-link-arrow">→</span>
       </button>
     </div>
+    <button class="text-btn" id="profile-logout-btn" style="margin-top:1.5rem;">Log Out</button>
   </section>
 
 </main>
