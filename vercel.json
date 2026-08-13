@@ -4,7 +4,22 @@
     { "source": "/api/room/:code/vote", "destination": "/api/room/[code]" },
     { "source": "/api/room/:code/finish", "destination": "/api/room/[code]" },
     { "source": "/api/room/:code/state", "destination": "/api/room/[code]" },
-    { "source": "/api/room/:code", "destination": "/api/room/[code]" }
+    { "source": "/api/room/:code", "destination": "/api/room/[code]" },
+
+    { "source": "/api/auth/signup", "destination": "/api/auth?action=signup" },
+    { "source": "/api/auth/login", "destination": "/api/auth?action=login" },
+    { "source": "/api/auth/logout", "destination": "/api/auth?action=logout" },
+    { "source": "/api/auth/google", "destination": "/api/auth?action=google" },
+
+    { "source": "/api/users/me", "destination": "/api/users?action=me" },
+    { "source": "/api/users/dietary", "destination": "/api/users?action=dietary" },
+    { "source": "/api/users/search", "destination": "/api/users?action=search" },
+
+    { "source": "/api/been-there/:id", "destination": "/api/been-there?id=:id" },
+    { "source": "/api/wish-list/:id", "destination": "/api/wish-list?id=:id" },
+
+    { "source": "/api/friends/add", "destination": "/api/friends?action=add" },
+    { "source": "/api/friends/:id/wishlist", "destination": "/api/friends?action=wishlist&id=:id" }
   ],
   "headers": [
     {

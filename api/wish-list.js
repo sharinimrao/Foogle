@@ -29,6 +29,14 @@ export default async function handler(req, res) {
       return res.status(200).json({ place: rows[0] });
     }
 
+    if (req.method === 'DELETE') {
+      const url = new URL(req.url, `http://${req.headers.host}`);
+      const id = parseInt(url.searchParams.get('id'), 10);
+      if (!Number.isInteger(id)) return res.status(400).json({ error: 'Invalid id' });
+      await sql`DELETE FROM wish_list WHERE id = ${id} AND user_id = ${user.id}`;
+      return res.status(200).json({ ok: true });
+    }
+
     return res.status(405).json({ error: 'Method not allowed' });
   } catch (e) {
     console.error('Wish-list error:', e);
