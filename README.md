@@ -1,4 +1,4 @@
-# Forknife
+# Fed Up
 
 > Where should we eat? Settled.
 
@@ -84,11 +84,12 @@ Visit `http://localhost:3000`.
 ## File map
 
 ```
-forknife/
+fedup/
 ├── public/
 │   ├── index.html      # All screens, single-page
-│   ├── styles.css      # Editorial diner aesthetic
-│   └── app.js          # State, screens, swipe gestures, Pusher subscription
+│   ├── styles.css      # Fed Up design system (navy-stroke/color-block)
+│   ├── app.js          # State, screens, swipe gestures, Pusher subscription
+│   └── assets/         # Logo + mascot art exported from Figma
 ├── api/
 │   ├── restaurants.js  # POST: Places search + Claude curation
 │   ├── room.js         # POST: create room
@@ -104,6 +105,8 @@ forknife/
 
 ## Design notes
 
-The aesthetic is intentionally not "another food app." Most are clinical-bright with stock food photography. This one is paper-warm — `#f5efe4` cream background, Fraunces serif headlines with optical sizing and slight `WONK` axis flex, oxblood `#9a2a2a` accents. Dark mode auto-flips to coffee-brown with warm orange.
+The aesthetic is intentionally not "another food app." Most are clinical-bright with stock food photography. Fed Up is a hand-drawn, sticker-book look — `#fffbf2` cream background, bold navy (`#264653`) strokes on every card and button, red/orange/teal accent blocks, and a rounded Fredoka/Nunito type pairing. Dark mode inverts the cream/navy relationship rather than trying to fake a "dark cream."
 
 The point: the app should feel like a confident waiter handing you a short menu, not a search engine.
+
+Login and onboarding are cosmetic — there's no account backend (see "What's not built yet" above), so they capture a local display name and nothing more. The Friends tab is cosmetic for the same reason: there's no real friend graph, so it's seeded with a few hardcoded demo friends (each with a sample wishlist) to show the intended UI rather than a real social backend.

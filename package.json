@@ -1,7 +1,7 @@
 {
-  "name": "foogle",
+  "name": "fedup",
   "version": "1.0.0",
-  "description": "Search engine for your next meal.",
+  "description": "Fed Up — search engine for your next meal.",
   "private": true,
   "type": "module",
   "dependencies": {
