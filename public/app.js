@@ -1,5 +1,30 @@
-const CUISINES = ['Pizza','Burgers','Mexican','Chinese','Thai','Japanese','Italian','Indian','BBQ','Sushi','Mediterranean','Vietnamese','Korean','American','Breakfast','Seafood','Vegetarian','Dessert','Boba','Bars','Smoothies/Juice'];
+const CUISINES = ['Pizza','Burgers','Mexican','Chinese','Thai','Japanese','Italian','Indian','BBQ','Sushi','Mediterranean','Vietnamese','Korean','American','Breakfast','Seafood','Vegetarian','Dessert','Boba','Bars','Smoothies/Juice','Coffee','Gluten-Free'];
 const PRICES = ['$','$$','$$$','$$$$'];
+function icon(name, sizeClass = 'icon-md') { return `<svg class="icon ${sizeClass}"><use href="#i-${name}"></use></svg>`; }
+const QUICKPICKS = [
+  { label: 'Coffee', icon: icon('coffee', 'icon-sm'), cuisine: 'Coffee', variant: 'red' },
+  { label: 'Drinks', icon: icon('cocktail', 'icon-sm'), cuisine: 'Bars', variant: 'orange' },
+  { label: 'Sweet', icon: icon('cupcake', 'icon-sm'), cuisine: 'Dessert', variant: 'orange' },
+];
+const DIETARY_OPTIONS = ['Gluten-Free', 'Vegetarian'];
+function foodIcon(sizeClass = 'icon-md') { return icon('ramen', sizeClass); }
+
+const MOCK_FRIENDS = [
+  { name: 'Maya Chen', wishlist: [
+    { name: 'Ramen Shop', cuisine: 'Japanese', priceLevel: '$$', neighborhood: 'Berkeley, CA' },
+    { name: 'Casa Verde', cuisine: 'Mexican', priceLevel: '$$', neighborhood: 'Oakland, CA' },
+  ]},
+  { name: 'Jordan Lee', wishlist: [
+    { name: 'The Copper Pot', cuisine: 'American', priceLevel: '$$$', neighborhood: 'San Francisco, CA' },
+  ]},
+  { name: 'Priya Patel', wishlist: [
+    { name: 'Spice Route', cuisine: 'Indian', priceLevel: '$$', neighborhood: 'Emeryville, CA' },
+    { name: 'Bao House', cuisine: 'Chinese', priceLevel: '$', neighborhood: 'Berkeley, CA' },
+  ]},
+];
+
+const TOPBAR_SCREENS = new Set(['home', 'room', 'match']);
+const BOTTOM_NAV_SCREENS = new Set(['home', 'saved', 'wishlist', 'friends', 'profile']);
 
 let PUSHER_CONFIG = null;
 async function getPusherConfig() {
@@ -61,6 +86,7 @@ const state = {
     members: {},
     swipedMembers: new Set(),
     pollInterval: null,
+    tallyBySpot: {},
   },
   lastMatch: null,
   recents: JSON.parse(localStorage.getItem('forknife:recents') || '[]'),
@@ -72,6 +98,11 @@ function $$(sel) { return document.querySelectorAll(sel); }
 function show(screenId) {
   $$('.screen').forEach(s => s.classList.remove('active'));
   $(`#screen-${screenId}`).classList.add('active');
+  $('#topbar').hidden = !TOPBAR_SCREENS.has(screenId);
+  const showNav = BOTTOM_NAV_SCREENS.has(screenId);
+  $('#bottom-nav').hidden = !showNav;
+  document.body.classList.toggle('has-bottom-nav', showNav);
+  $$('#bottom-nav button').forEach(b => b.classList.toggle('active', b.dataset.nav === screenId));
   window.scrollTo({ top: 0, behavior: 'instant' });
 }
 
@@ -111,6 +142,44 @@ function renderPills(containerId, items, selectedSet, modifier, oppositeSet) {
   });
 }
 
+function renderQuickpicks(containerId, selectedSet, onToggle) {
+  const c = $(containerId);
+  c.innerHTML = '';
+  QUICKPICKS.forEach(qp => {
+    const b = document.createElement('button');
+    b.className = 'quickpick-chip' + (qp.variant === 'red' ? ' red' : '') + (selectedSet.has(qp.cuisine) ? ' selected' : '');
+    b.type = 'button';
+    b.innerHTML = `${qp.icon} ${qp.label}`;
+    b.onclick = () => onToggle(qp.cuisine);
+    c.appendChild(b);
+  });
+}
+
+function renderDietary(containerId, selectedSet, onToggle) {
+  const c = $(containerId);
+  c.innerHTML = '';
+  DIETARY_OPTIONS.forEach(opt => {
+    const b = document.createElement('button');
+    b.className = 'dietary-chip' + (selectedSet.has(opt) ? ' selected' : '');
+    b.type = 'button';
+    b.textContent = opt;
+    b.onclick = () => onToggle(opt);
+    c.appendChild(b);
+  });
+}
+
+function wirePreferencesSearch(inputId, pillRowId) {
+  const input = $(inputId);
+  if (!input || input._wired) return;
+  input._wired = true;
+  input.oninput = () => {
+    const q = input.value.trim().toLowerCase();
+    $$(`${pillRowId} .pill`).forEach(pill => {
+      pill.hidden = q.length > 0 && !pill.textContent.toLowerCase().includes(q);
+    });
+  };
+}
+
 function renderPrice(containerId, selected, onChange) {
   const c = $(containerId);
   c.innerHTML = '';
@@ -125,16 +194,46 @@ function renderPrice(containerId, selected, onChange) {
 }
 
 function buildSoloScreen() {
+  if (!state.solo._seededDietary) {
+    state.solo._seededDietary = true;
+    getDietaryPrefs().forEach(p => state.solo.cuisines.add(p));
+  }
   renderPills('#solo-cuisines', CUISINES, state.solo.cuisines, null, state.solo.vetoes);
   renderPills('#solo-vetoes', CUISINES, state.solo.vetoes, 'veto', state.solo.cuisines);
+  renderQuickpicks('#solo-quickpicks', state.solo.cuisines, (cuisine) => {
+    if (state.solo.cuisines.has(cuisine)) state.solo.cuisines.delete(cuisine);
+    else state.solo.cuisines.add(cuisine);
+    buildSoloScreen();
+  });
+  renderDietary('#solo-dietary', state.solo.cuisines, (opt) => {
+    if (state.solo.cuisines.has(opt)) state.solo.cuisines.delete(opt);
+    else state.solo.cuisines.add(opt);
+    buildSoloScreen();
+  });
   const onSoloPrice = (p) => { state.solo.price = p; renderPrice('#solo-price', state.solo.price, onSoloPrice); };
   renderPrice('#solo-price', state.solo.price, onSoloPrice);
+  wirePreferencesSearch('#solo-preferences-search', '#solo-cuisines');
 }
 
 function buildGroupSetupScreen() {
+  if (!state.group._seededDietary) {
+    state.group._seededDietary = true;
+    getDietaryPrefs().forEach(p => state.group.cuisines.add(p));
+  }
   renderPills('#group-cuisines', CUISINES, state.group.cuisines, null, null);
+  renderQuickpicks('#group-quickpicks', state.group.cuisines, (cuisine) => {
+    if (state.group.cuisines.has(cuisine)) state.group.cuisines.delete(cuisine);
+    else state.group.cuisines.add(cuisine);
+    buildGroupSetupScreen();
+  });
+  renderDietary('#group-dietary', state.group.cuisines, (opt) => {
+    if (state.group.cuisines.has(opt)) state.group.cuisines.delete(opt);
+    else state.group.cuisines.add(opt);
+    buildGroupSetupScreen();
+  });
   const onGroupPrice = (p) => { state.group.price = p; renderPrice('#group-price', state.group.price, onGroupPrice); };
   renderPrice('#group-price', state.group.price, onGroupPrice);
+  wirePreferencesSearch('#group-preferences-search', '#group-cuisines');
 }
 
 $('#solo-distance').oninput = (e) => {
@@ -245,7 +344,7 @@ async function runSoloSearch() {
     toast(e.message || 'Something glitched');
   } finally {
     btn.disabled = false;
-    btn.querySelector('span').textContent = 'Foogle it';
+    btn.querySelector('span').textContent = 'Find My Pick';
   }
 }
 
@@ -368,7 +467,7 @@ function showDetail(spot) {
       <p>${escapeHtml(spot.why || '—')}</p>
     </div>
     ${spot.address ? `<div class="detail-section"><h4>Address</h4><p>${escapeHtml(spot.address)}</p></div>` : ''}
-    ${spot.openNow !== undefined ? `<div class="detail-section"><h4>Status</h4><p>${spot.openNow ? '<span style="color:var(--olive)">Open now</span>' : '<span style="color:var(--accent)">Closed</span>'}</p></div>` : ''}
+    ${spot.openNow !== undefined ? `<div class="detail-section"><h4>Status</h4><p>${spot.openNow ? '<span style="color:var(--teal)">Open now</span>' : '<span style="color:var(--red)">Closed</span>'}</p></div>` : ''}
     <div class="detail-action-row">
       <button class="primary-btn" id="detail-directions">Directions</button>
       ${spot.phone ? `<button class="ghost-btn" id="detail-call">Call</button>` : `<button class="ghost-btn" id="detail-website">Website</button>`}
@@ -399,12 +498,12 @@ $('#create-room-btn').onclick = () => {
 };
 
 $('#join-room-btn').onclick = () => {
-  $('#join-input-wrap').hidden = false;
   $('#room-code-input').focus();
 };
 
 $('#room-code-input').oninput = (e) => {
   e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4);
+  if (e.target.value.length === 4) $('#join-confirm').click();
 };
 
 $('#join-confirm').onclick = async () => {
@@ -495,6 +594,17 @@ function buildSwipeStack() {
     area.appendChild(card);
   });
   $('#rs-progress').textContent = `${state.group.swipeIndex}/${state.group.candidates.length}`;
+  renderSwipeDots();
+}
+
+function renderSwipeDots() {
+  const dots = $('#swipe-dots');
+  const total = state.group.candidates.length;
+  if (!total) { dots.hidden = true; return; }
+  dots.hidden = false;
+  const count = Math.min(total, 5);
+  const current = state.group.swipeIndex % count;
+  dots.innerHTML = Array.from({ length: count }, (_, i) => `<span class="${i === current ? 'active' : ''}"></span>`).join('');
 }
 
 async function postFinish() {
@@ -519,18 +629,32 @@ async function postFinish() {
   } catch (e) { console.error(e); }
 }
 
+function sourceFriendFor(spot, index) {
+  if (index % 3 !== 1) return null;
+  return MOCK_FRIENDS[index % MOCK_FRIENDS.length];
+}
+
 function createSwipeCard(spot, stackPos) {
   const card = document.createElement('div');
   card.className = 'swipe-card' + (stackPos === 1 ? ' stacked-1' : stackPos === 2 ? ' stacked-2' : '');
+  const curatedLabel = state.group.roomCode ? '-Curated for the Group-' : '-Curated for You-';
+  const dietaryTag = getDietaryPrefs().values().next().value;
+  const friend = sourceFriendFor(spot, state.group.swipeIndex);
   card.innerHTML = `
-    <div class="sc-cuisine">${escapeHtml(spot.cuisine)}</div>
+    <div class="sc-curated">${curatedLabel}</div>
+    <hr class="sc-divider" />
     <div class="sc-name">${escapeHtml(spot.name)}</div>
     <div class="sc-meta">
-      <span>${escapeHtml(spot.priceLevel || '$$')}</span>
-      <span class="sc-meta-dot"></span>
       <span>${escapeHtml(spot.neighborhood || '')}</span>
+      ${spot.distance ? `<span class="sc-meta-dot"></span><span>${spot.distance} mi</span>` : ''}
     </div>
     <div class="sc-vibe">${escapeHtml(spot.vibe || spot.why || '')}</div>
+    <div class="sc-tags">
+      <span class="sc-tag">${escapeHtml(spot.priceLevel || '$$')}</span>
+      ${dietaryTag ? `<span class="sc-tag dietary">${escapeHtml(dietaryTag)}</span>` : ''}
+    </div>
+    ${friend ? `<div class="sc-via">Via ${escapeHtml(friend.name.split(' ')[0])}'s List</div>` : ''}
+    <div class="sc-image">${foodIcon('icon-xl')}<span class="sc-image-caption">Insert Image</span></div>
     ${spot.rating ? `<div class="sc-rating"><span class="sc-rating-stars">${starString(spot.rating)}</span><span>${spot.rating.toFixed(1)} · ${spot.reviewCount || 0} reviews</span></div>` : ''}
     <div class="swipe-overlay yes">YES</div>
     <div class="swipe-overlay no">NOPE</div>
@@ -670,6 +794,7 @@ async function connectToRoom() {
   });
 
   channel.bind('vote', (data) => {
+    if (data.tally) state.group.tallyBySpot[data.spotId] = data.tally.yes;
     if (data.vote === 'yes' && data.voterId !== state.group.voterId) {
       const tallyText = data.tally.yes > 1 ? ` (${data.tally.yes} now)` : '';
       showVoteFlash(`Someone said yes${tallyText}`);
@@ -832,7 +957,7 @@ function showSessionEnd(matchIds) {
     sub.textContent = "You all had different tastes. Time to compromise — or try again.";
     list.innerHTML = `
       <div class="no-matches-state">
-        <div class="icon">🤷</div>
+        <div class="icon">${foodIcon('icon-xl')}</div>
         <div>Nobody agreed on anything. Maybe expand the cuisines next time?</div>
       </div>
     `;
@@ -888,9 +1013,26 @@ $('#se-restart').onclick = () => {
 function showMatch(spot) {
   state.lastMatch = spot;
   // Don't disconnect — user might want to keep swiping for more matches
+  $('#match-image').innerHTML = foodIcon('icon-xl');
   $('#match-name').textContent = spot.name;
   $('#match-meta').textContent = `${spot.cuisine} · ${spot.priceLevel || '$$'} · ${spot.neighborhood || ''}`;
   $('#match-why').textContent = spot.why || spot.vibe || '';
+  const dietaryTag = getDietaryPrefs().values().next().value;
+  const spotIndex = state.group.candidates.findIndex(c => (c.id || c.name) === (spot.id || spot.name));
+  const friend = sourceFriendFor(spot, spotIndex >= 0 ? spotIndex : 0);
+  $('#match-tags').innerHTML = `
+    <span class="match-tag">${escapeHtml(dietaryTag || spot.cuisine)}</span>
+    ${friend ? `<span class="match-tag">${escapeHtml(friend.name.split(' ')[0])}'s list</span>` : ''}
+  `;
+  const tally = state.group.tallyBySpot && state.group.tallyBySpot[spot.id || spot.name];
+  const votesEl = $('#match-votes');
+  if (typeof tally === 'number' && tally > 0) {
+    votesEl.hidden = false;
+    votesEl.textContent = `${tally} Vote${tally === 1 ? '' : 's'}`;
+  } else {
+    votesEl.hidden = true;
+  }
+  $('#match-room-code').textContent = state.group.roomCode ? `ROOM ${state.group.roomCode} ~` : '';
   $('#match-directions').onclick = () => {
     const q = encodeURIComponent(`${spot.name} ${spot.address || state.group.location}`);
     window.open(`https://www.google.com/maps/search/?api=1&query=${q}`, '_blank');
@@ -929,7 +1071,7 @@ $('#share-room-btn').onclick = async () => {
   const url = `${window.location.origin}/?join=${state.group.roomCode}`;
   if (navigator.share) {
     try {
-      await navigator.share({ title: 'Foogle', text: `Help us decide where to eat. Room code: ${state.group.roomCode}`, url });
+      await navigator.share({ title: 'Fed Up', text: `Help us decide where to eat. Room code: ${state.group.roomCode}`, url });
     } catch (e) {}
   } else {
     await navigator.clipboard.writeText(url);
@@ -941,15 +1083,222 @@ function renderRecents() {
   if (state.recents.length === 0) return;
   $('#recents-section').hidden = false;
   const list = $('#recents-list');
-  list.innerHTML = state.recents.map(r => `<div style="font-family:var(--serif);font-size:16px;color:var(--ink-soft);margin-bottom:4px;">${escapeHtml(r.name)} <span style="color:var(--ink-fade);font-size:13px;">— ${escapeHtml(r.cuisine)}</span></div>`).join('');
+  list.innerHTML = state.recents.map(r => `<div style="font-family:var(--display);font-weight:600;font-size:16px;color:var(--ink-soft);margin-bottom:4px;">${escapeHtml(r.name)} <span style="color:var(--ink-fade);font-size:13px;">— ${escapeHtml(r.cuisine)}</span></div>`).join('');
 }
 
+// Overrides the generic `.back-btn` disconnect-and-navigate behavior —
+// leaving the match screen shouldn't drop the live room connection.
+$('#match-back').onclick = () => {
+  state.lastMatch = null;
+  show('room');
+};
+
+/* ---------- Onboarding / Login ----------
+   Cosmetic only — there's no account backend. "Logging in" just captures
+   a local display name (same mechanism group mode already uses) and
+   unlocks the app; nothing is sent anywhere or verified. */
+$('#onboarding-start').onclick = () => {
+  localStorage.setItem('forknife:onboarded', '1');
+  show(localStorage.getItem('forknife:loggedIn') ? 'home' : 'login');
+};
+
+function completeLogin() {
+  localStorage.setItem('forknife:loggedIn', '1');
+  getOrCreateUserName();
+  show('home');
+  buildProfileScreen();
+  renderRecents();
+}
+$('#login-google-btn').onclick = completeLogin;
+$('#login-submit').onclick = completeLogin;
+$('#login-signup-toggle').onclick = completeLogin;
+
+/* ---------- Bottom nav ---------- */
+$$('#bottom-nav button').forEach(b => {
+  b.onclick = () => {
+    const target = b.dataset.nav;
+    if (target === 'saved') buildSavedScreen();
+    if (target === 'profile') buildProfileScreen();
+    show(target);
+  };
+});
+
+/* ---------- Saved: Been There / Wish List (localStorage-backed) ---------- */
+function savedKey(tab) { return tab === 'been' ? 'forknife:beenThere' : 'forknife:wishlist'; }
+function getSavedList(tab) { return JSON.parse(localStorage.getItem(savedKey(tab)) || '[]'); }
+function setSavedList(tab, list) { localStorage.setItem(savedKey(tab), JSON.stringify(list)); }
+
+function renderPlaceList(containerSel, items, { emptyText, onRemove }) {
+  const list = $(containerSel);
+  if (items.length === 0) {
+    list.innerHTML = `<div class="empty-state"><div class="icon">${foodIcon('icon-xl')}</div><p>${emptyText}</p></div>`;
+    return;
+  }
+  list.innerHTML = items.map((r, i) => `
+    <div class="saved-item">
+      <div class="saved-item-icon">${foodIcon('icon-md')}</div>
+      <div class="saved-item-body"><div class="saved-item-name">${escapeHtml(r.name)}</div></div>
+      <div class="saved-item-meta">${escapeHtml(r.cuisine)} ${escapeHtml(r.priceLevel || '')}<br>${escapeHtml(r.neighborhood || '')}</div>
+      ${onRemove ? `<button class="saved-item-remove" data-remove="${i}" aria-label="Remove">×</button>` : ''}
+    </div>
+  `).join('');
+  if (onRemove) {
+    $$(`${containerSel} [data-remove]`).forEach(btn => {
+      btn.onclick = () => onRemove(parseInt(btn.dataset.remove));
+    });
+  }
+}
+
+function buildSavedScreen() {
+  const q = $('#saved-search').value.trim().toLowerCase();
+  const items = getSavedList('been').filter(r => !q || r.name.toLowerCase().includes(q));
+  renderPlaceList('#saved-list', items, {
+    emptyText: "You haven't marked anywhere as visited yet.",
+    onRemove: (i) => { setSavedList('been', getSavedList('been').filter((_, idx) => idx !== i)); buildSavedScreen(); },
+  });
+}
+$('#saved-search').oninput = () => buildSavedScreen();
+$('#mark-visited-btn').onclick = () => openMarkVisitedModal('been');
+
+state.viewingFriend = null;
+
+function buildWishlistScreen(friend = null) {
+  state.viewingFriend = friend;
+  const backBtn = $('#wishlist-back');
+  const searchBar = $('#wishlist-search-bar');
+  if (friend) {
+    const first = friend.name.split(' ')[0];
+    $('#wishlist-title').textContent = `${first}'s Wishlist`;
+    $('#wishlist-sub').textContent = `Places ${first} wants to try…`;
+    backBtn.hidden = false;
+    searchBar.hidden = true;
+    renderPlaceList('#wishlist-list', friend.wishlist, { emptyText: 'Nothing on this wish list yet.' });
+  } else {
+    $('#wishlist-title').textContent = 'Wish List';
+    $('#wishlist-sub').textContent = 'Places on the bucket list….';
+    backBtn.hidden = true;
+    searchBar.hidden = false;
+    const q = $('#wishlist-search').value.trim().toLowerCase();
+    const items = getSavedList('wish').filter(r => !q || r.name.toLowerCase().includes(q));
+    renderPlaceList('#wishlist-list', items, {
+      emptyText: 'Nothing on your wish list yet — search above to add a place.',
+      onRemove: (i) => { setSavedList('wish', getSavedList('wish').filter((_, idx) => idx !== i)); buildWishlistScreen(); },
+    });
+  }
+}
+$('#wishlist-search').oninput = () => buildWishlistScreen();
+$('#wishlist-search-bar').addEventListener('click', () => { if (!state.viewingFriend) openMarkVisitedModal('wish'); });
+$('#wishlist-back').onclick = () => { state.viewingFriend = null; buildFriendsScreen(); show('friends'); };
+
+let markVisitedTargetTab = 'been';
+function openMarkVisitedModal(tab) {
+  markVisitedTargetTab = tab;
+  $('#mark-visited-modal h3').textContent = tab === 'been' ? 'Mark a place as visited' : 'Add to your wish list';
+  $('#mark-visited-location').value = state.solo.location || '';
+  $('#mark-visited-input').value = '';
+  $('#mark-visited-results').innerHTML = '';
+  $('#mark-visited-modal').showModal();
+}
+$('#mark-visited-search-btn').onclick = async () => {
+  const loc = $('#mark-visited-location').value.trim();
+  const q = $('#mark-visited-input').value.trim();
+  if (!loc) { toast('Where are you?'); return; }
+  const btn = $('#mark-visited-search-btn');
+  btn.disabled = true;
+  try {
+    const data = await fetchRestaurants({ location: loc, cuisines: q ? [q] : [], vetoes: [], price: '$$$$', distance: 25, count: 6 });
+    const results = data.restaurants || [];
+    const resultsEl = $('#mark-visited-results');
+    resultsEl.innerHTML = results.length
+      ? results.map((r, i) => `<div class="saved-item" data-add="${i}" style="cursor:pointer;"><div class="saved-item-icon">${foodIcon('icon-md')}</div><div class="saved-item-body"><div class="saved-item-name">${escapeHtml(r.name)}</div></div><div class="saved-item-meta">${escapeHtml(r.cuisine)}</div></div>`).join('')
+      : '<p class="modal-fine">No results — try a different search.</p>';
+    $$('#mark-visited-results [data-add]').forEach(el => {
+      el.onclick = () => {
+        const spot = results[parseInt(el.dataset.add)];
+        const list = getSavedList(markVisitedTargetTab);
+        if (!list.some(x => x.name === spot.name)) list.push(spot);
+        setSavedList(markVisitedTargetTab, list);
+        $('#mark-visited-modal').close();
+        if (markVisitedTargetTab === 'been') buildSavedScreen(); else buildWishlistScreen();
+        toast(markVisitedTargetTab === 'been' ? 'Marked as visited' : 'Added to wish list');
+      };
+    });
+  } catch (e) {
+    toast(e.message || 'Search failed');
+  } finally {
+    btn.disabled = false;
+  }
+};
+
+/* ---------- Friends ---------- */
+function buildFriendsScreen() {
+  const q = $('#friends-search').value.trim().toLowerCase();
+  const friends = MOCK_FRIENDS.filter(f => !q || f.name.toLowerCase().includes(q));
+  const list = $('#friends-list');
+  if (friends.length === 0) {
+    list.innerHTML = `<div class="empty-state"><p>No friends match "${escapeHtml(q)}".</p></div>`;
+    return;
+  }
+  list.innerHTML = friends.map((f, i) => `
+    <div class="friend-row">
+      <span class="friend-name">${escapeHtml(f.name)}</span>
+      <button class="friend-list-chip" data-friend="${i}">${escapeHtml(f.name.split(' ')[0])}'s Wishlist</button>
+    </div>
+  `).join('');
+  $$('#friends-list [data-friend]').forEach(btn => {
+    btn.onclick = () => {
+      buildWishlistScreen(friends[parseInt(btn.dataset.friend)]);
+      show('wishlist');
+    };
+  });
+}
+$('#friends-search').oninput = () => buildFriendsScreen();
+
+/* ---------- Profile ---------- */
+function getDietaryPrefs() { return new Set(JSON.parse(localStorage.getItem('forknife:dietaryPrefs') || '[]')); }
+
+function buildProfileScreen() {
+  const name = getOrCreateUserName();
+  $('#profile-name').textContent = name;
+  $('#profile-avatar').textContent = (name.trim()[0] || '?').toUpperCase();
+  $('#profile-been-count').textContent = getSavedList('been').length;
+  $('#profile-wishlist-count').textContent = getSavedList('wish').length;
+  renderDietary('#profile-dietary', getDietaryPrefs(), (opt) => {
+    const set = getDietaryPrefs();
+    if (set.has(opt)) set.delete(opt); else set.add(opt);
+    localStorage.setItem('forknife:dietaryPrefs', JSON.stringify(Array.from(set)));
+    buildProfileScreen();
+  });
+}
+
+$('#profile-edit-btn').onclick = () => {
+  $('#profile-name-input').value = getOrCreateUserName();
+  $('#edit-profile-modal').showModal();
+};
+$('#profile-name-save').onclick = () => {
+  const val = $('#profile-name-input').value.trim();
+  if (val) localStorage.setItem('forknife:userName', val);
+  $('#edit-profile-modal').close();
+  buildProfileScreen();
+};
+$('#profile-been-link').onclick = () => { buildSavedScreen(); show('saved'); };
+$('#profile-wishlist-link').onclick = () => { buildWishlistScreen(); show('wishlist'); };
+$('#profile-friends-link').onclick = () => { buildFriendsScreen(); show('friends'); };
+$('#profile-settings-link').onclick = () => toast('Settings coming soon');
+
+/* ---------- Init ---------- */
 const urlParams = new URLSearchParams(window.location.search);
 const joinCode = urlParams.get('join');
 if (joinCode) {
   show('group-start');
-  $('#join-input-wrap').hidden = false;
-  $('#room-code-input').value = joinCode.toUpperCase();
+  $('#room-code-input').value = joinCode.toUpperCase().slice(0, 4);
+  if ($('#room-code-input').value.length === 4) $('#join-confirm').click();
+} else if (!localStorage.getItem('forknife:onboarded')) {
+  show('onboarding');
+} else if (!localStorage.getItem('forknife:loggedIn')) {
+  show('login');
+} else {
+  show('home');
 }
 
 renderRecents();

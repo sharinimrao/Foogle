@@ -3,21 +3,153 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-<meta name="theme-color" content="#ff6b6b" />
-<title>Foogle — Search engine for your next meal.</title>
+<meta name="theme-color" content="#264653" />
+<title>Fed Up — Search engine for your next meal.</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT,WONK@9..144,400;9..144,500;9..144,700;9..144,900&family=Inter+Tight:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
 <script src="https://js.pusher.com/8.4.0/pusher.min.js"></script>
 </head>
 <body>
 
+<svg class="icon-sprite" aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden;">
+<defs>
+
+<symbol id="i-coffee" viewBox="0 0 48 48">
+  <path d="M15 14c-2.2-2 1.8-4.2 0-6.2" fill="none" stroke="#E63946" stroke-width="2" stroke-linecap="round"/>
+  <path d="M20.5 14c-2.2-2 1.8-4.2 0-6.2" fill="none" stroke="#E63946" stroke-width="2" stroke-linecap="round"/>
+  <path d="M26 14c-2.2-2 1.8-4.2 0-6.2" fill="none" stroke="#E63946" stroke-width="2" stroke-linecap="round"/>
+  <path d="M32 23c5 0 7.5 3 7.5 6.8s-2.5 6.4-7 6.4" fill="none" stroke="#264653" stroke-width="2.3" stroke-linecap="round"/>
+  <path d="M10.5 18h23l-2.2 18c-.3 2.8-2.7 4.4-5.6 4.4H18.3c-2.9 0-5.3-1.6-5.6-4.4z" fill="#F4A261" stroke="#264653" stroke-width="2.3" stroke-linejoin="round"/>
+  <path d="M10.5 18h23" stroke="#264653" stroke-width="2.3" stroke-linecap="round"/>
+</symbol>
+
+<symbol id="i-cocktail" viewBox="0 0 48 48">
+  <path d="M8 10h32L25.6 27.5c-.4.5-.6 1-.6 1.6V38" fill="none" stroke="#264653" stroke-width="0"/>
+  <path d="M8 10h32L26 27.4z" fill="#2A9D8F" stroke="#264653" stroke-width="2.3" stroke-linejoin="round"/>
+  <path d="M24.4 27.4V38" stroke="#264653" stroke-width="2.3" stroke-linecap="round"/>
+  <path d="M16.5 39.6h16" stroke="#264653" stroke-width="2.3" stroke-linecap="round"/>
+  <path d="M32 6l-9.5 12.6" stroke="#264653" stroke-width="3.4" stroke-linecap="round"/>
+  <path d="M32 6l-9.5 12.6" stroke="#F4A261" stroke-width="2" stroke-linecap="round"/>
+  <circle cx="22" cy="18.6" r="2.8" fill="#E63946" stroke="#264653" stroke-width="1.6"/>
+</symbol>
+
+<symbol id="i-cupcake" viewBox="0 0 48 48">
+  <path d="M13.5 24h21l-3 15.3c-.3 1.5-1.6 2.7-3.2 2.7H19.7c-1.6 0-2.9-1.2-3.2-2.7z" fill="#2A9D8F" stroke="#264653" stroke-width="2.3" stroke-linejoin="round"/>
+  <path d="M19 27v13M24 27v13M29 27v13" stroke="#264653" stroke-width="1.6" stroke-linecap="round"/>
+  <path d="M12 24.5c-.3-4 2.6-7.4 5.8-7.6.9-3 3.6-5.4 6.2-5.4s5.3 2.4 6.2 5.4c3.2.2 6.1 3.6 5.8 7.6-.1 1.7-1.8 3-3.8 3H15.8c-2 0-3.7-1.3-3.8-3z" fill="#E63946" stroke="#264653" stroke-width="2.3" stroke-linejoin="round"/>
+  <path d="M19 18l1.6 2.4M24 15.6v2.8M29 18l-1.6 2.4" stroke="#F4A261" stroke-width="1.6" stroke-linecap="round"/>
+</symbol>
+
+<symbol id="i-pin" viewBox="0 0 48 48">
+  <path d="M24 6c7.2 0 13 5.6 13 12.9 0 9-13 23.1-13 23.1S11 27.9 11 18.9C11 11.6 16.8 6 24 6z" fill="#E63946" stroke="#264653" stroke-width="2.3" stroke-linejoin="round"/>
+  <circle cx="24" cy="18.6" r="5" fill="#FFFBF2" stroke="#264653" stroke-width="1.8"/>
+</symbol>
+
+<symbol id="i-search" viewBox="0 0 48 48">
+  <circle cx="20" cy="20" r="10.5" fill="none" stroke="#264653" stroke-width="5.6"/>
+  <circle cx="20" cy="20" r="10.5" fill="none" stroke="#2A9D8F" stroke-width="4"/>
+  <line x1="27.5" y1="27.5" x2="39" y2="39" stroke="#264653" stroke-width="6.4" stroke-linecap="round"/>
+  <line x1="27.5" y1="27.5" x2="39" y2="39" stroke="#E63946" stroke-width="4" stroke-linecap="round"/>
+</symbol>
+
+<symbol id="i-gear" viewBox="0 0 48 48">
+  <rect x="10" y="10" width="28" height="28" rx="6" fill="#F4A261" stroke="#264653" stroke-width="2.2"/>
+  <rect x="10" y="10" width="28" height="28" rx="6" transform="rotate(45 24 24)" fill="#E63946" stroke="#264653" stroke-width="2.2"/>
+  <circle cx="24" cy="24" r="7" fill="#FFFBF2" stroke="#264653" stroke-width="2.2"/>
+</symbol>
+
+<symbol id="i-friends" viewBox="0 0 48 48">
+  <circle cx="17" cy="16" r="6.2" fill="#E63946" stroke="#264653" stroke-width="2.1"/>
+  <path d="M6.5 41c0-8.3 4.6-14.4 10.5-14.4S27.5 32.7 27.5 41z" fill="#E63946" stroke="#264653" stroke-width="2.1" stroke-linejoin="round"/>
+  <circle cx="30.5" cy="17" r="6.2" fill="#2A9D8F" stroke="#264653" stroke-width="2.1"/>
+  <path d="M20 41.5c0-8.3 4.6-14.4 10.5-14.4S41 33.2 41 41.5z" fill="#2A9D8F" stroke="#264653" stroke-width="2.1" stroke-linejoin="round"/>
+</symbol>
+
+<symbol id="i-clipboard-heart" viewBox="0 0 48 48">
+  <rect x="10" y="10" width="28" height="34" rx="4" fill="#F4A261" stroke="#264653" stroke-width="2.2"/>
+  <rect x="18" y="6" width="12" height="7" rx="2" fill="#F4A261" stroke="#264653" stroke-width="2.2"/>
+  <path d="M24 27s-6-3.6-6-8c0-2.6 2-4.4 4.3-4.4 1.6 0 2.9.9 3.7 2.2.8-1.3 2.1-2.2 3.7-2.2 2.3 0 4.3 1.8 4.3 4.4 0 4.4-6 8-6 8z" fill="#E63946" stroke="#264653" stroke-width="1.8" stroke-linejoin="round"/>
+  <path d="M15 32h18M15 36h18M15 40h12" stroke="#2A9D8F" stroke-width="2.2" stroke-linecap="round"/>
+</symbol>
+
+<symbol id="i-ramen" viewBox="0 0 48 48">
+  <path d="M15 14c-1.6-1.8 1.6-3.6 0-5.4" fill="none" stroke="#264653" stroke-width="1.6" stroke-linecap="round"/>
+  <path d="M20.5 13c-1.6-1.8 1.6-3.6 0-5.4" fill="none" stroke="#264653" stroke-width="1.6" stroke-linecap="round"/>
+  <path d="M26 14c-1.6-1.8 1.6-3.6 0-5.4" fill="none" stroke="#264653" stroke-width="1.6" stroke-linecap="round"/>
+  <path d="M33 18l7-8" stroke="#264653" stroke-width="3" stroke-linecap="round"/>
+  <path d="M33 18l7-8" stroke="#D9A066" stroke-width="1.8" stroke-linecap="round"/>
+  <path d="M36.5 20.5l6-8.5" stroke="#264653" stroke-width="3" stroke-linecap="round"/>
+  <path d="M36.5 20.5l6-8.5" stroke="#D9A066" stroke-width="1.8" stroke-linecap="round"/>
+  <path d="M9 27c0-6 3.6-11 15-11s15 5 15 11z" fill="#F4A261" stroke="#264653" stroke-width="2.2" stroke-linejoin="round"/>
+  <path d="M11 24c3-2.4 6-3.6 13-3.6s10 1.2 13 3.6" fill="none" stroke="#264653" stroke-width="1.2" stroke-linecap="round" opacity="0.5"/>
+  <ellipse cx="17.5" cy="20" rx="4.2" ry="5.6" fill="#FFFBF2" stroke="#264653" stroke-width="2"/>
+  <path d="M14 23.4c1 1 5 1 7 0" fill="#FFD65C" stroke="#264653" stroke-width="1.6" stroke-linecap="round"/>
+  <circle cx="30.5" cy="23" r="4" fill="#FFFBF2" stroke="#264653" stroke-width="1.8"/>
+  <path d="M30.5 21a2 2 0 1 1 -1.6 3.1" fill="none" stroke="#F28FB0" stroke-width="1.3" stroke-linecap="round"/>
+  <path d="M6.5 26h35c0 8.6-6.6 15.4-17.5 15.4S6.5 34.6 6.5 26z" fill="#2A9D8F" stroke="#264653" stroke-width="2.3" stroke-linejoin="round"/>
+  <path d="M18 41.2h12" stroke="#264653" stroke-width="2.3" stroke-linecap="round"/>
+</symbol>
+
+<symbol id="i-fork-spoon" viewBox="0 0 48 48">
+  <g fill="#E63946" stroke="#264653" stroke-width="1.6" stroke-linejoin="round">
+    <rect x="10.4" y="6" width="2.4" height="11" rx="1.1"/>
+    <rect x="14.4" y="6" width="2.4" height="11" rx="1.1"/>
+    <rect x="18.4" y="6" width="2.4" height="11" rx="1.1"/>
+    <rect x="22.4" y="6" width="2.4" height="11" rx="1.1"/>
+    <path d="M9.8 16.6c0 3.2 2.4 4.6 6.8 4.6s6.8-1.4 6.8-4.6" fill="none"/>
+    <rect x="14.4" y="20" width="4.4" height="22" rx="2.2"/>
+  </g>
+  <g fill="#2A9D8F" stroke="#264653" stroke-width="1.6" stroke-linejoin="round">
+    <ellipse cx="34.5" cy="11.5" rx="5.6" ry="7.6"/>
+    <rect x="32.3" y="17.6" width="4.4" height="24.4" rx="2.2"/>
+  </g>
+</symbol>
+
+<symbol id="i-bookmark" viewBox="0 0 48 48">
+  <path d="M13 7h22v34l-11-7.7L13 41z" fill="#E63946" stroke="#264653" stroke-width="2.3" stroke-linejoin="round"/>
+</symbol>
+
+<symbol id="i-person" viewBox="0 0 48 48">
+  <circle cx="24" cy="16" r="8.4" fill="#2A9D8F" stroke="#264653" stroke-width="2.3"/>
+  <path d="M7 42c0-10.5 7.6-17.6 17-17.6S41 31.5 41 42z" fill="#2A9D8F" stroke="#264653" stroke-width="2.3" stroke-linejoin="round"/>
+</symbol>
+
+<symbol id="i-heart" viewBox="0 0 48 48">
+  <path d="M24 40.5S5.5 28.4 5.5 15.3C5.5 7.8 11.4 4 16.6 4c4 0 6.6 2.1 7.4 5.4C24.8 6.1 27.4 4 31.4 4c5.2 0 11.1 3.8 11.1 11.3 0 13.1-18.5 25.2-18.5 25.2z" fill="#E63946" stroke="#264653" stroke-width="2.6" stroke-linejoin="round"/>
+</symbol>
+
+<symbol id="i-x" viewBox="0 0 48 48">
+  <g stroke="#264653" stroke-width="7.4" stroke-linecap="round">
+    <line x1="10" y1="10" x2="38" y2="38"/>
+    <line x1="38" y1="10" x2="10" y2="38"/>
+  </g>
+  <g stroke="#E63946" stroke-width="4.6" stroke-linecap="round">
+    <line x1="10" y1="10" x2="38" y2="38"/>
+    <line x1="38" y1="10" x2="10" y2="38"/>
+  </g>
+</symbol>
+
+<symbol id="i-back" viewBox="0 0 48 48">
+  <g fill="none" stroke="#264653" stroke-width="7.6" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M22 9L8.5 24 22 39"/>
+    <line x1="11" y1="24" x2="40" y2="24"/>
+  </g>
+  <g fill="none" stroke="#E63946" stroke-width="4.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M22 9L8.5 24 22 39"/>
+    <line x1="11" y1="24" x2="40" y2="24"/>
+  </g>
+</symbol>
+
+</defs>
+</svg>
+
 <div class="floaties" id="floaties"></div>
 
-<header class="topbar">
+<header class="topbar" id="topbar">
   <div class="logo">
-    <span class="logo-next">F</span><span class="logo-bite">oogle</span>
+    <img src="assets/logo.png" alt="Fed Up" />
   </div>
   <button class="icon-btn" id="info-btn" aria-label="About">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><path d="M12 16v-4M12 8h.01"/></svg>
@@ -26,31 +158,53 @@
 
 <main id="app">
 
-  <section class="screen active" id="screen-home">
+  <section class="screen active" id="screen-onboarding">
+    <div class="splash-screen">
+      <img class="splash-mascot bob" src="assets/mascot.png" alt="" />
+      <h1 class="splash-title">FedUp of not knowing your next big eats?</h1>
+      <div class="splash-dots"><span></span><span></span><span></span><span></span><span></span></div>
+      <button class="primary-btn" id="onboarding-start"><span>Get Started</span> <span class="btn-arrow">→</span></button>
+    </div>
+  </section>
+
+  <section class="screen" id="screen-login">
+    <div class="login-screen">
+      <img class="login-logo" src="assets/logo.png" alt="Fed Up" />
+      <button class="google-btn" id="login-google-btn">Continue with Google</button>
+      <div class="login-divider">OR</div>
+      <div class="login-field">
+        <label for="login-email">Email:</label>
+        <input type="text" id="login-email" autocomplete="off" />
+      </div>
+      <div class="login-field">
+        <label for="login-password">Password:</label>
+        <input type="text" id="login-password" autocomplete="off" />
+      </div>
+      <button class="primary-btn" id="login-submit"><span>Log In</span></button>
+      <div class="login-switch">New here? <button type="button" class="link-inline" id="login-signup-toggle">Sign Up</button></div>
+    </div>
+  </section>
+
+  <section class="screen" id="screen-home">
     <div class="hero">
-      <h1 class="display">What's the<br><em>vibe</em><br>tonight?</h1>
-      <p class="lede">A search engine for your next meal. Less scrolling, more eating.</p>
+      <h1 class="display">What's your next big eats?</h1>
     </div>
     <div class="mode-cards">
       <button class="mode-card" data-mode="solo">
-        <div class="mode-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11h18M5 11l1 9a2 2 0 002 2h8a2 2 0 002-2l1-9M9 5a3 3 0 016 0v6"/></svg>
+        <h3>Pick for Me…</h3>
+        <div class="mode-icons">
+          <svg class="icon icon-lg"><use href="#i-coffee"></use></svg>
+          <svg class="icon icon-lg"><use href="#i-cocktail"></use></svg>
+          <svg class="icon icon-lg"><use href="#i-cupcake"></use></svg>
         </div>
-        <div class="mode-body">
-          <h3>Just pick for me</h3>
-          <p>Tell me cravings. I'll hand you six.</p>
-        </div>
-        <div class="mode-arrow">→</div>
       </button>
-      <button class="mode-card" data-mode="group">
-        <div class="mode-icon pink">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 7a4 4 0 100 8 4 4 0 000-8zM23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+      <button class="mode-card red" data-mode="group">
+        <h3>Settle a Group Debate…</h3>
+        <div class="mode-icons">
+          <svg class="icon icon-lg"><use href="#i-coffee"></use></svg>
+          <svg class="icon icon-lg"><use href="#i-cocktail"></use></svg>
+          <svg class="icon icon-lg"><use href="#i-cupcake"></use></svg>
         </div>
-        <div class="mode-body">
-          <h3>Settle a group debate</h3>
-          <p>Everyone swipes. First match wins.</p>
-        </div>
-        <div class="mode-arrow">→</div>
       </button>
     </div>
     <div class="recents" id="recents-section" hidden>
@@ -60,13 +214,26 @@
   </section>
 
   <section class="screen" id="screen-solo">
-    <button class="back-btn" data-back="home">← back</button>
-    <h2 class="screen-title">Tell me what's good.</h2>
+    <h2 class="screen-title">PICK FOR ME</h2>
+    <button class="back-btn back-row" data-back="home">
+      <svg class="icon icon-sm"><use href="#i-back"></use></svg>
+      <span>Set your own filters</span>
+    </button>
 
     <div class="field">
-      <label for="solo-location">Where are you?</label>
+      <label for="solo-location"><svg class="icon icon-xs"><use href="#i-pin"></use></svg> Where are you?</label>
       <input type="text" id="solo-location" placeholder="City, neighborhood, or zip" autocomplete="off" />
-      <button class="text-btn" id="use-my-location">Use my location</button>
+      <button class="text-btn" id="use-my-location">Use my Location</button>
+    </div>
+
+    <div class="field">
+      <label for="solo-preferences-search"><svg class="icon icon-xs"><use href="#i-search"></use></svg> Preferences:</label>
+      <input type="text" id="solo-preferences-search" placeholder="Search any cuisine or craving…" autocomplete="off" />
+    </div>
+
+    <div class="field">
+      <label>Quick Picks:</label>
+      <div class="quickpick-row" id="solo-quickpicks"></div>
     </div>
 
     <div class="field">
@@ -74,9 +241,13 @@
       <div class="pill-row" id="solo-cuisines"></div>
     </div>
 
-    <div class="field">
-      <label>What sounds awful? <span class="hint">veto list</span></label>
+    <div class="field" hidden>
       <div class="pill-row" id="solo-vetoes"></div>
+    </div>
+
+    <div class="field">
+      <label>Dietary Preferences:</label>
+      <div class="dietary-row" id="solo-dietary"></div>
     </div>
 
     <div class="field-row">
@@ -91,13 +262,13 @@
     </div>
 
     <button class="primary-btn" id="solo-find">
-      <span>Foogle it</span>
+      <span>Find My Pick</span>
       <span class="btn-arrow">→</span>
     </button>
   </section>
 
   <section class="screen" id="screen-results">
-    <button class="back-btn" data-back="solo">← refine</button>
+    <button class="back-btn" data-back="solo"><svg class="icon icon-sm"><use href="#i-back"></use></svg> refine</button>
     <h2 class="screen-title" id="results-title">Six results.</h2>
     <p class="results-sub" id="results-sub"></p>
     <div class="reshuffle-top">
@@ -114,61 +285,77 @@
   </section>
 
   <section class="screen" id="screen-detail">
-    <button class="back-btn" data-back="results">← back to list</button>
+    <button class="back-btn" data-back="results"><svg class="icon icon-sm"><use href="#i-back"></use></svg> back to list</button>
     <div id="detail-content"></div>
   </section>
 
   <section class="screen" id="screen-group-start">
-    <button class="back-btn" data-back="home">← back</button>
-    <h2 class="screen-title">Group search.</h2>
-    <p class="lede-sm">Each person opens this app. The first mutual yes wins.</p>
+    <div class="title-row">
+      <button class="back-btn" data-back="home"><svg class="icon icon-md"><use href="#i-back"></use></svg></button>
+      <h2 class="plain-title">Group Search…</h2>
+    </div>
 
     <div class="group-actions">
       <button class="group-action" id="create-room-btn">
-        <div class="ga-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
-        </div>
-        <div class="ga-body">
-          <h3>Start a new room</h3>
-          <p>You set the parameters, share the code.</p>
-        </div>
-      </button>
-      <button class="group-action" id="join-room-btn">
-        <div class="ga-icon pink">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 7L4 12l5 5M4 12h16"/></svg>
-        </div>
-        <div class="ga-body">
-          <h3>Join existing room</h3>
-          <p>Got a 4-letter code from a friend.</p>
+        <div class="ga-body"><h3>Start a New Room +</h3></div>
+        <div class="ga-icons">
+          <svg class="icon icon-lg"><use href="#i-coffee"></use></svg>
+          <svg class="icon icon-lg"><use href="#i-cocktail"></use></svg>
+          <svg class="icon icon-lg"><use href="#i-cupcake"></use></svg>
         </div>
       </button>
-    </div>
-
-    <div class="join-input" id="join-input-wrap" hidden>
-      <input type="text" id="room-code-input" placeholder="ABCD" maxlength="4" />
-      <button class="primary-btn small" id="join-confirm">Join →</button>
+      <div class="group-action" id="join-room-btn" role="button" tabindex="0">
+        <div class="ga-body"><h3>Join an Existing Room</h3></div>
+        <div class="join-input" id="join-input-wrap">
+          <span class="join-input-label">ENTER CODE:</span>
+          <input type="text" id="room-code-input" placeholder="____" maxlength="4" />
+          <button class="primary-btn small" id="join-confirm" hidden>Join →</button>
+        </div>
+        <div class="ga-icons">
+          <svg class="icon icon-lg"><use href="#i-coffee"></use></svg>
+          <svg class="icon icon-lg"><use href="#i-cocktail"></use></svg>
+          <svg class="icon icon-lg"><use href="#i-cupcake"></use></svg>
+        </div>
+      </div>
     </div>
   </section>
 
   <section class="screen" id="screen-group-setup">
-    <button class="back-btn" data-back="group-start">← back</button>
-    <h2 class="screen-title">Set the boundaries.</h2>
-    <p class="lede-sm">Everyone who joins will swipe through these same picks.</p>
+    <h2 class="screen-title">GROUP PICK</h2>
+    <button class="back-btn back-row" data-back="group-start">
+      <svg class="icon icon-sm"><use href="#i-back"></use></svg>
+      <span>Set filters for the Group</span>
+    </button>
 
     <div class="field">
-  <label for="group-location">Where</label>
-  <input type="text" id="group-location" placeholder="City or neighborhood" autocomplete="off" />
-  <button class="text-btn" id="use-my-location-group">Use my location</button>
-</div>
+      <label for="group-location"><svg class="icon icon-xs"><use href="#i-pin"></use></svg> Where are you?</label>
+      <input type="text" id="group-location" placeholder="City, neighborhood, or zip" autocomplete="off" />
+      <button class="text-btn" id="use-my-location-group">Use my Location</button>
+    </div>
 
     <div class="field">
-      <label>Cuisines on the table</label>
+      <label for="group-preferences-search"><svg class="icon icon-xs"><use href="#i-search"></use></svg> Preferences:</label>
+      <input type="text" id="group-preferences-search" placeholder="Search any cuisine or craving…" autocomplete="off" />
+    </div>
+
+    <div class="field">
+      <label>Quick Picks:</label>
+      <div class="quickpick-row" id="group-quickpicks"></div>
+    </div>
+
+    <div class="field">
+      <label>What sounds good?</label>
       <div class="pill-row" id="group-cuisines"></div>
+    </div>
+
+    <div class="field">
+      <label>Dietary Preferences:</label>
+      <div class="dietary-row" id="group-dietary"></div>
     </div>
 
     <div class="field-row">
       <div class="field">
-        <label>Price ceiling</label>
+        <label>Price</label>
         <div class="price-pills" id="group-price"></div>
       </div>
       <div class="field">
@@ -178,17 +365,16 @@
     </div>
 
     <button class="primary-btn" id="create-confirm">
-      <span>Generate room</span>
+      <span>Generate Room</span>
       <span class="btn-arrow">→</span>
     </button>
   </section>
 
   <section class="screen" id="screen-room">
     <div class="room-header">
-      <div class="room-code-display">
-        <div class="rc-label">room code</div>
-        <div class="rc-code" id="rc-code">····</div>
-      </div>
+      <button class="back-btn" data-back="home"><svg class="icon icon-md"><use href="#i-back"></use></svg></button>
+      <div class="rc-label">room code</div>
+      <div class="rc-code" id="rc-code">····</div>
       <button class="text-btn share-btn" id="share-room-btn">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="16" height="16"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8M16 6l-4-4-4 4M12 2v13"/></svg>
         share
@@ -204,24 +390,24 @@
     <div class="presence-row" id="presence-row" hidden></div>
 
     <div class="swipe-area" id="swipe-area">
-      <div class="swipe-loading">Foogling…</div>
+      <div class="swipe-loading">Fed Upping…</div>
     </div>
 
     <div class="swipe-controls" id="swipe-controls" hidden>
       <button class="swipe-btn no" id="swipe-no" aria-label="No">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        <svg class="icon icon-xl"><use href="#i-x"></use></svg>
       </button>
       <button class="swipe-btn yes" id="swipe-yes" aria-label="Yes">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>
+        <svg class="icon icon-xl"><use href="#i-heart"></use></svg>
       </button>
     </div>
+    <div class="swipe-dots" id="swipe-dots" hidden></div>
   </section>
 
   <section class="screen" id="screen-session-end">
     <div class="session-end">
-      <div class="match-label" id="se-label">everyone's swiped</div>
-      <h2 class="screen-title" id="se-title" style="text-align: center; margin-bottom: 1.5rem;">Final matches</h2>
-      <p class="results-sub" id="se-sub" style="text-align: center;">Places you all agreed on. Pick one together.</p>
+      <h2 class="screen-title" id="se-title">Final matches</h2>
+      <p class="results-sub" id="se-sub">Places you all agreed on. Pick one together.</p>
       <div id="session-matches-list"></div>
       <button class="ghost-btn" id="se-restart">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="16" height="16"><path d="M3 12a9 9 0 0 1 15-6.7L21 8M21 3v5h-5M21 12a9 9 0 0 1-15 6.7L3 16M3 21v-5h5"/></svg>
@@ -232,30 +418,118 @@
 
   <section class="screen" id="screen-match">
     <div class="match-burst">
-      <div class="match-label">it's a match</div>
-      <h2 class="match-title" id="match-name">—</h2>
-      <div class="match-meta" id="match-meta">—</div>
-      <p class="match-why" id="match-why">—</p>
+      <div class="title-row">
+        <button class="back-btn" id="match-back"><svg class="icon icon-md"><use href="#i-back"></use></svg></button>
+        <h2 class="screen-title inline">It's a Match!</h2>
+      </div>
+      <div class="match-card">
+        <div class="match-image" id="match-image"><svg class="icon icon-xl"><use href="#i-ramen"></use></svg></div>
+        <h3 class="match-title" id="match-name">—</h3>
+        <div class="match-meta" id="match-meta">—</div>
+        <div class="match-tags" id="match-tags"></div>
+        <p class="match-why" id="match-why">—</p>
+      </div>
+      <div class="votes-pill" id="match-votes" hidden>0 Votes</div>
       <div class="match-actions">
         <button class="primary-btn" id="match-directions">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="16" height="16"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-          Directions
+          <span>Get Directions</span>
         </button>
-        <button class="ghost-btn" id="match-call">Call</button>
+        <button class="ghost-btn" id="match-keep-swiping">Next Match →</button>
       </div>
-      <button class="text-btn" id="match-keep-swiping">← Keep swiping for more matches</button>
+      <button class="text-btn" id="match-call" hidden>Call</button>
+      <div class="match-room-code" id="match-room-code"></div>
       <br>
       <button class="text-btn" id="match-reset">Start over</button>
     </div>
   </section>
 
+  <section class="screen" id="screen-saved">
+    <div class="nav-page-title"><h2>Been There</h2></div>
+    <p class="nav-page-sub">Places you've already discovered…</p>
+    <div class="search-bar" id="saved-search-bar">
+      <svg class="icon icon-sm"><use href="#i-search"></use></svg>
+      <input type="text" id="saved-search" placeholder="Search Saved Place…" autocomplete="off" />
+    </div>
+    <button class="mark-visited-btn" id="mark-visited-btn">+ Mark a place as visited</button>
+    <div id="saved-list"></div>
+  </section>
+
+  <section class="screen" id="screen-wishlist">
+    <button class="back-btn" id="wishlist-back" hidden><svg class="icon icon-sm"><use href="#i-back"></use></svg> back to friends</button>
+    <div class="nav-page-title"><h2 id="wishlist-title">Wish List</h2></div>
+    <p class="nav-page-sub" id="wishlist-sub">Places on the bucket list….</p>
+    <div class="search-bar" id="wishlist-search-bar">
+      <svg class="icon icon-sm"><use href="#i-search"></use></svg>
+      <input type="text" id="wishlist-search" placeholder="Add places…" autocomplete="off" />
+    </div>
+    <div id="wishlist-list"></div>
+  </section>
+
+  <section class="screen" id="screen-friends">
+    <div class="nav-page-title"><h2>Friends</h2></div>
+    <p class="nav-page-sub">Find your friends and their restaurant wish lists!</p>
+    <div class="search-bar">
+      <svg class="icon icon-sm"><use href="#i-search"></use></svg>
+      <input type="text" id="friends-search" placeholder="Find your friends…" autocomplete="off" />
+    </div>
+    <div id="friends-list"></div>
+  </section>
+
+  <section class="screen" id="screen-profile">
+    <div class="profile-header">
+      <div class="profile-avatar" id="profile-avatar">S</div>
+      <div class="profile-name" id="profile-name">—</div>
+      <button class="profile-edit-btn" id="profile-edit-btn">Edit Profile</button>
+    </div>
+    <div class="profile-dietary">
+      <div class="profile-section-label">Dietary Preferences</div>
+      <div class="dietary-row" id="profile-dietary"></div>
+    </div>
+    <div class="profile-links">
+      <button class="profile-link" id="profile-been-link">
+        <span class="profile-link-label">Been There</span>
+        <span class="profile-link-value" id="profile-been-count">0</span>
+        <span class="profile-link-arrow">→</span>
+      </button>
+      <button class="profile-link" id="profile-friends-link">
+        <svg class="icon icon-md profile-link-icon"><use href="#i-friends"></use></svg>
+        <span class="profile-link-label">Friends</span>
+        <span class="profile-link-value" id="profile-friends-count">0</span>
+        <span class="profile-link-arrow">→</span>
+      </button>
+      <button class="profile-link" id="profile-settings-link">
+        <svg class="icon icon-md profile-link-icon"><use href="#i-gear"></use></svg>
+        <span class="profile-link-label">Settings</span>
+        <span class="profile-link-arrow">→</span>
+      </button>
+      <button class="profile-link" id="profile-wishlist-link">
+        <svg class="icon icon-md profile-link-icon"><use href="#i-clipboard-heart"></use></svg>
+        <span class="profile-link-label">Wish List</span>
+        <span class="profile-link-value" id="profile-wishlist-count">0</span>
+        <span class="profile-link-arrow">→</span>
+      </button>
+    </div>
+  </section>
+
 </main>
+
+<nav class="bottom-nav" id="bottom-nav" hidden>
+  <button data-nav="home" aria-label="Home">
+    <svg class="icon icon-md"><use href="#i-fork-spoon"></use></svg>
+  </button>
+  <button data-nav="saved" aria-label="Saved">
+    <svg class="icon icon-md"><use href="#i-bookmark"></use></svg>
+  </button>
+  <button data-nav="profile" aria-label="Profile">
+    <svg class="icon icon-md"><use href="#i-person"></use></svg>
+  </button>
+</nav>
 
 <div class="toast" id="toast" hidden></div>
 
 <dialog id="info-modal">
   <div class="modal-content">
-    <h3>About Foogle</h3>
+    <h3>About Fed Up</h3>
     <p>A search engine for your next meal. Solves the "where should we eat" debate with restaurant data and a stubborn refusal to suggest 47 options.</p>
     <p class="modal-fine">Built as a demo. Restaurant data from Google Places.</p>
     <button class="primary-btn small" id="close-info">Got it</button>
@@ -271,9 +545,36 @@
   </div>
 </dialog>
 
+<dialog id="edit-profile-modal">
+  <div class="modal-content">
+    <h3>Edit Profile</h3>
+    <div class="login-field">
+      <label for="profile-name-input">Display name:</label>
+      <input type="text" id="profile-name-input" autocomplete="off" />
+    </div>
+    <button class="primary-btn small" id="profile-name-save">Save</button>
+  </div>
+</dialog>
+
+<dialog id="mark-visited-modal">
+  <div class="modal-content">
+    <h3>Mark a place as visited</h3>
+    <div class="login-field">
+      <label for="mark-visited-input">Where are you?</label>
+      <input type="text" id="mark-visited-location" placeholder="City, neighborhood, or zip" autocomplete="off" />
+    </div>
+    <div class="login-field">
+      <label for="mark-visited-input">Restaurant or search term:</label>
+      <input type="text" id="mark-visited-input" placeholder="e.g. Ramen Shop" autocomplete="off" />
+    </div>
+    <button class="primary-btn small" id="mark-visited-search-btn">Search</button>
+    <div id="mark-visited-results"></div>
+  </div>
+</dialog>
+
 <script>
-  // Sprinkle animated food emojis around the page
-  const foods = ['🍕','🍔','🌮','🍣','🍩','🍦','🍜','🍱','🥑','🍓','🥐','🌯','🍪','🥗','🍰','🥟','🍤','🥖','🧁','🥞'];
+  // Sprinkle animated brand icons around the page
+  const foods = ['i-coffee', 'i-cocktail', 'i-cupcake', 'i-ramen'];
   const positions = [
   { x: '6%',  y: '8%',  size: 52, dur: 6,   delay: 0 },
   { x: '88%', y: '12%', size: 58, dur: 7,   delay: 1 },
@@ -289,8 +590,8 @@
   positions.forEach((p, i) => {
     const el = document.createElement('div');
     el.className = 'floatie';
-    el.textContent = shuffled[i % shuffled.length];
-    el.style.cssText = `left:${p.x};top:${p.y};font-size:${p.size}px;animation-duration:${p.dur}s;animation-delay:${p.delay}s;`;
+    el.innerHTML = `<svg class="icon" viewBox="0 0 48 48"><use href="#${shuffled[i % shuffled.length]}"></use></svg>`;
+    el.style.cssText = `left:${p.x};top:${p.y};width:${p.size}px;height:${p.size}px;animation-duration:${p.dur}s;animation-delay:${p.delay}s;`;
     floaties.appendChild(el);
   });
 </script>
