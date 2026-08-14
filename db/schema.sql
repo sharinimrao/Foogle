@@ -56,6 +56,8 @@ CREATE TABLE IF NOT EXISTS friendships (
   PRIMARY KEY (user_id, friend_id)
 );
 
+ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url TEXT;
+
 CREATE INDEX IF NOT EXISTS been_there_user_idx ON been_there(user_id);
 CREATE INDEX IF NOT EXISTS wish_list_user_idx ON wish_list(user_id);
 CREATE INDEX IF NOT EXISTS sessions_user_idx ON sessions(user_id);

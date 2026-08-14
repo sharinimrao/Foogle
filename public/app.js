@@ -9,8 +9,15 @@ const QUICKPICKS = [
 const DIETARY_OPTIONS = ['Gluten-Free', 'Vegetarian'];
 function foodIcon(sizeClass = 'icon-md') { return icon('ramen', sizeClass); }
 
+// Real Places photo when we have one (proxied server-side so the API key
+// never reaches the browser), falling back to the ramen placeholder icon —
+// Places doesn't guarantee every listing has a photo.
+function placePhotoUrl(spot, width = 500) {
+  return spot.photoRef ? `/api/restaurants?photo=${encodeURIComponent(spot.photoRef)}&w=${width}` : null;
+}
+
 const TOPBAR_SCREENS = new Set(['home', 'room', 'match']);
-const BOTTOM_NAV_SCREENS = new Set(['home', 'saved', 'wishlist', 'friends', 'profile']);
+const BOTTOM_NAV_SCREENS = new Set(['home', 'saved', 'wishlist', 'friends', 'profile', 'settings']);
 
 let PUSHER_CONFIG = null;
 async function getPusherConfig() {
@@ -260,47 +267,43 @@ $$('.back-btn').forEach(b => {
 $('#info-btn').onclick = () => $('#info-modal').showModal();
 $('#close-info').onclick = () => $('#info-modal').close();
 
-$('#use-my-location').onclick = () => {
-  if (!navigator.geolocation) { toast('Geolocation not available'); return; }
-  $('#use-my-location').textContent = 'Locating…';
-  navigator.geolocation.getCurrentPosition(
-    async (pos) => {
-      const { latitude, longitude } = pos.coords;
-      $('#solo-location').dataset.coords = `${latitude},${longitude}`;
-      try {
-        const r = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`);
-        const data = await r.json();
-        const addr = data.address;
-        const readable = addr.neighbourhood || addr.suburb || addr.city_district || addr.city || addr.town || `${latitude.toFixed(4)},${longitude.toFixed(4)}`;
-        $('#solo-location').value = readable;
-        $('#use-my-location').textContent = 'Location set ✓';
-      } catch {
-        $('#solo-location').value = `${latitude.toFixed(4)},${longitude.toFixed(4)}`;
-        $('#use-my-location').textContent = 'Location set ✓';
+function wireUseMyLocationButton(buttonId, inputId, { reverseGeocode = true } = {}) {
+  const btn = $(buttonId);
+  if (!btn) return;
+  const idleLabel = btn.textContent;
+  btn.onclick = () => {
+    if (!navigator.geolocation) { toast('Geolocation not available'); return; }
+    btn.textContent = 'Locating…';
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const { latitude, longitude } = pos.coords;
+        const input = $(inputId);
+        input.dataset.coords = `${latitude},${longitude}`;
+        if (reverseGeocode) {
+          try {
+            const r = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`);
+            const data = await r.json();
+            const addr = data.address;
+            input.value = addr.neighbourhood || addr.suburb || addr.city_district || addr.city || addr.town || `${latitude.toFixed(4)},${longitude.toFixed(4)}`;
+          } catch {
+            input.value = `${latitude.toFixed(4)},${longitude.toFixed(4)}`;
+          }
+        } else {
+          input.value = `${latitude.toFixed(4)},${longitude.toFixed(4)}`;
+        }
+        btn.textContent = 'Location set ✓';
+      },
+      (err) => {
+        btn.textContent = idleLabel;
+        toast(err.message ? `Location error: ${err.message}` : 'Could not get location');
       }
-    },
-    () => {
-      $('#use-my-location').textContent = 'Use my location';
-      toast('Could not get location');
-    }
-  );
-};
-$('#use-my-location-group').onclick = () => {
-  if (!navigator.geolocation) { toast('Geolocation not available'); return; }
-  $('#use-my-location-group').textContent = 'Locating…';
-  navigator.geolocation.getCurrentPosition(
-    (pos) => {
-      const { latitude, longitude } = pos.coords;
-      $('#group-location').value = `${latitude.toFixed(4)},${longitude.toFixed(4)}`;
-      $('#group-location').dataset.coords = `${latitude},${longitude}`;
-      $('#use-my-location-group').textContent = 'Location set ✓';
-    },
-    (err) => {
-      $('#use-my-location').textContent = 'Use my location';
-      toast(`Location error: ${err.code} - ${err.message}`);
-    }
-  );
-};
+    );
+  };
+}
+
+wireUseMyLocationButton('#use-my-location', '#solo-location');
+wireUseMyLocationButton('#use-my-location-group', '#group-location', { reverseGeocode: false });
+wireUseMyLocationButton('#mark-visited-use-location', '#mark-visited-location');
 
 $('#solo-find').onclick = async () => {
   const loc = $('#solo-location').value.trim();
@@ -642,7 +645,7 @@ function createSwipeCard(spot, stackPos) {
       ${dietaryTag ? `<span class="sc-tag dietary">${escapeHtml(dietaryTag)}</span>` : ''}
     </div>
     ${friend ? `<div class="sc-via">Via ${escapeHtml(friend.name.split(' ')[0])}'s List</div>` : ''}
-    <div class="sc-image">${foodIcon('icon-xl')}<span class="sc-image-caption">Insert Image</span></div>
+    <div class="sc-image">${placePhotoUrl(spot) ? `<img class="place-photo" src="${placePhotoUrl(spot)}" alt="${escapeHtml(spot.name)}" loading="lazy" />` : `${foodIcon('icon-xl')}<span class="sc-image-caption">Insert Image</span>`}</div>
     ${spot.rating ? `<div class="sc-rating"><span class="sc-rating-stars">${starString(spot.rating)}</span><span>${spot.rating.toFixed(1)} · ${spot.reviewCount || 0} reviews</span></div>` : ''}
     <div class="swipe-overlay yes">YES</div>
     <div class="swipe-overlay no">NOPE</div>
@@ -1001,7 +1004,8 @@ $('#se-restart').onclick = () => {
 function showMatch(spot) {
   state.lastMatch = spot;
   // Don't disconnect — user might want to keep swiping for more matches
-  $('#match-image').innerHTML = foodIcon('icon-xl');
+  const photoUrl = placePhotoUrl(spot);
+  $('#match-image').innerHTML = photoUrl ? `<img class="place-photo" src="${photoUrl}" alt="${escapeHtml(spot.name)}" loading="lazy" />` : foodIcon('icon-xl');
   $('#match-name').textContent = spot.name;
   $('#match-meta').textContent = `${spot.cuisine} · ${spot.priceLevel || '$$'} · ${spot.neighborhood || ''}`;
   $('#match-why').textContent = spot.why || spot.vibe || '';
@@ -1253,12 +1257,22 @@ function openMarkVisitedModal(tab) {
   $('#mark-visited-location').value = state.solo.location || '';
   $('#mark-visited-input').value = '';
   $('#mark-visited-results').innerHTML = '';
+  $('#mark-visited-error').hidden = true;
   $('#mark-visited-modal').showModal();
 }
 $('#mark-visited-search-btn').onclick = async () => {
   const loc = $('#mark-visited-location').value.trim();
   const q = $('#mark-visited-input').value.trim();
-  if (!loc) { toast('Where are you?'); return; }
+  const errorEl = $('#mark-visited-error');
+  errorEl.hidden = true;
+  // A plain toast() would be invisible here — native <dialog> elements always
+  // paint above position:fixed content regardless of z-index, so validation
+  // errors while this modal is open need to render inside it instead.
+  if (!loc) {
+    errorEl.textContent = 'Enter a location, or tap "Use my Location" above.';
+    errorEl.hidden = false;
+    return;
+  }
   const btn = $('#mark-visited-search-btn');
   btn.disabled = true;
   try {
@@ -1278,7 +1292,8 @@ $('#mark-visited-search-btn').onclick = async () => {
       };
     });
   } catch (e) {
-    toast(e.message || 'Search failed');
+    errorEl.textContent = e.message || 'Search failed';
+    errorEl.hidden = false;
   } finally {
     btn.disabled = false;
   }
@@ -1373,11 +1388,40 @@ async function setDietaryPrefs(set) {
   } catch (e) { console.error(e); }
 }
 
+function renderAvatarInto(el, user) {
+  if (user?.avatar_url) {
+    el.innerHTML = `<img class="avatar-photo" src="${user.avatar_url}" alt="" />`;
+  } else {
+    el.textContent = (user?.name?.trim()[0] || '?').toUpperCase();
+  }
+}
+
+function resizeImageToDataUrl(file, size) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const reader = new FileReader();
+    reader.onload = () => { img.src = reader.result; };
+    reader.onerror = reject;
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext('2d');
+      const scale = Math.max(size / img.width, size / img.height);
+      const w = img.width * scale, h = img.height * scale;
+      ctx.drawImage(img, (size - w) / 2, (size - h) / 2, w, h);
+      resolve(canvas.toDataURL('image/jpeg', 0.85));
+    };
+    img.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
 async function buildProfileScreen() {
   const user = state.currentUser;
   if (!user) return;
   $('#profile-name').textContent = user.name;
-  $('#profile-avatar').textContent = (user.name.trim()[0] || '?').toUpperCase();
+  renderAvatarInto($('#profile-avatar'), user);
   $('#profile-been-count').textContent = state.beenThereCount;
   $('#profile-wishlist-count').textContent = state.wishlistCount;
   const friendsCountEl = $('#profile-friends-count');
@@ -1395,34 +1439,124 @@ async function buildProfileScreen() {
   });
 }
 
+state.pendingAvatarDataUrl = undefined;
+
 $('#profile-edit-btn').onclick = () => {
   $('#profile-name-input').value = state.currentUser ? state.currentUser.name : '';
+  state.pendingAvatarDataUrl = undefined;
+  renderAvatarInto($('#edit-avatar-preview'), state.currentUser);
   $('#edit-profile-modal').showModal();
 };
+
+$('#edit-avatar-preview').onclick = () => $('#edit-avatar-input').click();
+$('#edit-avatar-btn').onclick = () => $('#edit-avatar-input').click();
+$('#edit-avatar-input').onchange = async (e) => {
+  const file = e.target.files[0];
+  e.target.value = '';
+  if (!file) return;
+  try {
+    const dataUrl = await resizeImageToDataUrl(file, 128);
+    state.pendingAvatarDataUrl = dataUrl;
+    $('#edit-avatar-preview').innerHTML = `<img class="avatar-photo" src="${dataUrl}" alt="" />`;
+  } catch (err) {
+    toast('Could not read that image');
+  }
+};
+
 $('#profile-name-save').onclick = async () => {
   const val = $('#profile-name-input').value.trim();
-  if (val) {
+  const body = {};
+  if (val) body.name = val;
+  if (state.pendingAvatarDataUrl !== undefined) body.avatarDataUrl = state.pendingAvatarDataUrl;
+
+  if (Object.keys(body).length > 0) {
     try {
       const r = await fetch('/api/users/me', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: val }),
+        body: JSON.stringify(body),
       });
       if (r.ok) state.currentUser = (await r.json()).user;
     } catch (e) { console.error(e); }
   }
+  state.pendingAvatarDataUrl = undefined;
   $('#edit-profile-modal').close();
   buildProfileScreen();
 };
 $('#profile-been-link').onclick = () => { buildSavedScreen(); show('saved'); };
 $('#profile-wishlist-link').onclick = () => { buildWishlistScreen(); show('wishlist'); };
 $('#profile-friends-link').onclick = () => { buildFriendsScreen(); show('friends'); };
-$('#profile-settings-link').onclick = () => toast('Settings coming soon');
-$('#profile-logout-btn').onclick = async () => {
+$('#profile-settings-link').onclick = () => { buildSettingsScreen(); show('settings'); };
+
+async function doLogout() {
   try { await fetch('/api/auth/logout', { method: 'POST' }); } catch (e) { console.error(e); }
   state.currentUser = null;
   state.dietaryPreferences = new Set();
   show('login');
+}
+$('#profile-logout-btn').onclick = doLogout;
+
+/* ---------- Settings ---------- */
+function buildSettingsScreen() {
+  const isLocal = state.currentUser?.auth_provider === 'local';
+  $('#settings-password-section').hidden = !isLocal;
+  $('#settings-google-note').hidden = isLocal;
+  $('#settings-current-password').value = '';
+  $('#settings-new-password').value = '';
+  $('#settings-password-error').hidden = true;
+  $('#settings-password-success').hidden = true;
+}
+
+$('#settings-password-save').onclick = async () => {
+  const currentPassword = $('#settings-current-password').value;
+  const newPassword = $('#settings-new-password').value;
+  const errorEl = $('#settings-password-error');
+  const successEl = $('#settings-password-success');
+  errorEl.hidden = true;
+  successEl.hidden = true;
+
+  if (!currentPassword || !newPassword) {
+    errorEl.textContent = 'Fill in both fields';
+    errorEl.hidden = false;
+    return;
+  }
+  const btn = $('#settings-password-save');
+  btn.disabled = true;
+  try {
+    const r = await fetch('/api/auth/change-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ currentPassword, newPassword }),
+    });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error || 'Could not update password');
+    $('#settings-current-password').value = '';
+    $('#settings-new-password').value = '';
+    successEl.textContent = 'Password updated.';
+    successEl.hidden = false;
+  } catch (e) {
+    errorEl.textContent = e.message;
+    errorEl.hidden = false;
+  } finally {
+    btn.disabled = false;
+  }
+};
+
+$('#settings-logout-btn').onclick = doLogout;
+
+$('#settings-delete-account-btn').onclick = async () => {
+  const sure = confirm('Delete your account? This removes your profile, dietary preferences, Been There, Wish List, and friend connections. This cannot be undone.');
+  if (!sure) return;
+  try {
+    const r = await fetch('/api/users/me', { method: 'DELETE' });
+    if (!r.ok) throw new Error('Could not delete account');
+    state.currentUser = null;
+    state.dietaryPreferences = new Set();
+    show('login');
+    toast('Account deleted');
+  } catch (e) {
+    toast(e.message || 'Could not delete account');
+  }
 };
 
 /* ---------- Init ---------- */

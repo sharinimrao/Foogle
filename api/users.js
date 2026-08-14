@@ -2,7 +2,7 @@
 // GET /api/users/search — one function (dispatched by ?action=) to stay
 // under the Hobby plan's 12-function deployment cap.
 import { sql, requireDb } from './_db.js';
-import { requireAuth } from './_auth.js';
+import { requireAuth, clearSessionCookie } from './_auth.js';
 
 export default async function handler(req, res) {
   const url = new URL(req.url, `http://${req.headers.host}`);
@@ -15,23 +15,55 @@ export default async function handler(req, res) {
 }
 
 async function handleMe(req, res) {
-  if (req.method !== 'PATCH') return res.status(405).json({ error: 'Method not allowed' });
+  if (req.method === 'PATCH') return handleMePatch(req, res);
+  if (req.method === 'DELETE') return handleMeDelete(req, res);
+  return res.status(405).json({ error: 'Method not allowed' });
+}
+
+async function handleMePatch(req, res) {
   try {
     requireDb();
     const user = await requireAuth(req, res);
     if (!user) return;
 
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
-    const name = (body.name || '').trim();
-    if (!name) return res.status(400).json({ error: 'Name is required' });
+    const hasName = typeof body.name === 'string';
+    const hasAvatar = typeof body.avatarDataUrl === 'string' || body.avatarDataUrl === null;
+    if (!hasName && !hasAvatar) return res.status(400).json({ error: 'Nothing to update' });
 
-    const { rows } = await sql`
-      UPDATE users SET name = ${name} WHERE id = ${user.id}
-      RETURNING id, email, name, auth_provider, created_at
-    `;
+    let name = user.name;
+    if (hasName) {
+      name = body.name.trim();
+      if (!name) return res.status(400).json({ error: 'Name is required' });
+    }
+
+    const { rows } = hasAvatar
+      ? await sql`
+          UPDATE users SET name = ${name}, avatar_url = ${body.avatarDataUrl}
+          WHERE id = ${user.id}
+          RETURNING id, email, name, auth_provider, avatar_url, created_at
+        `
+      : await sql`
+          UPDATE users SET name = ${name} WHERE id = ${user.id}
+          RETURNING id, email, name, auth_provider, avatar_url, created_at
+        `;
     return res.status(200).json({ user: rows[0] });
   } catch (e) {
     console.error('Update profile error:', e);
+    return res.status(e.statusCode || 500).json({ error: e.message });
+  }
+}
+
+async function handleMeDelete(req, res) {
+  try {
+    requireDb();
+    const user = await requireAuth(req, res);
+    if (!user) return;
+    await sql`DELETE FROM users WHERE id = ${user.id}`;
+    clearSessionCookie(res);
+    return res.status(200).json({ ok: true });
+  } catch (e) {
+    console.error('Delete account error:', e);
     return res.status(e.statusCode || 500).json({ error: e.message });
   }
 }

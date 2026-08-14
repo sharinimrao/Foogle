@@ -46,7 +46,7 @@ async function searchPlaces({ lat, lng, radiusMeters, query, minPrice, maxPrice 
     headers: {
       'Content-Type': 'application/json',
       'X-Goog-Api-Key': GOOGLE_KEY,
-      'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.priceLevel,places.rating,places.userRatingCount,places.types,places.location,places.currentOpeningHours,places.nationalPhoneNumber,places.websiteUri,places.editorialSummary',
+      'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.priceLevel,places.rating,places.userRatingCount,places.types,places.location,places.currentOpeningHours,places.nationalPhoneNumber,places.websiteUri,places.editorialSummary,places.photos',
     },
     body: JSON.stringify(body),
   });
@@ -99,9 +99,13 @@ function generateVibe(p, cuisine) {
   return `Local ${cuisine.toLowerCase()} restaurant worth a try.`;
 }
 
-function generateWhy(p, params, cuisine) {
+function generateWhy(p, params, cuisine, personalization) {
   const reasons = [];
+  const key = (p.displayName?.text || '').toLowerCase();
   const inCravings = params.cuisines.some(c => c.toLowerCase() === cuisine.toLowerCase());
+  if (personalization.wishlistNames.has(key)) reasons.push('on your wish list');
+  const friendSource = personalization.friendSourceByLowerName.get(key);
+  if (friendSource) reasons.push(`${friendSource.name.split(' ')[0]} wants to try it`);
   if (inCravings) reasons.push(`matches your ${cuisine.toLowerCase()} craving`);
   if (p.rating >= 4.6) reasons.push('crowd favorite');
   if (p.currentOpeningHours?.openNow) reasons.push('open now');
@@ -112,8 +116,10 @@ function generateWhy(p, params, cuisine) {
   return `Good pick — ${reasons.slice(0, 3).join(', ')}.`;
 }
 
-function formatRestaurant(p, params) {
+function formatRestaurant(p, params, personalization) {
   const cuisine = inferCuisine(p.types, p.displayName?.text);
+  const key = (p.displayName?.text || '').toLowerCase();
+  const friendSource = personalization.friendSourceByLowerName.get(key);
   return {
     id: p.id,
     name: p.displayName?.text || 'Unknown',
@@ -127,54 +133,105 @@ function formatRestaurant(p, params) {
     website: p.websiteUri,
     openNow: p.currentOpeningHours?.openNow,
     location: p.location,
+    photoRef: p.photos && p.photos.length > 0 ? p.photos[0].name : null,
     vibe: generateVibe(p, cuisine),
-    why: generateWhy(p, params, cuisine),
+    why: generateWhy(p, params, cuisine, personalization),
+    ...(friendSource ? { sourceFriend: friendSource } : {}),
   };
 }
 
-// Tags candidates with sourceFriend: {id, name} when a friend has that place
-// on their Been There or Wish List. Best-effort — never blocks the search.
-async function annotateFriendSources(req, restaurants) {
+// Pulls the signals that let recommendations reflect what this user (and
+// their friends) actually want, not just raw Google ratings:
+//  - beenThereNames: exclude these from results entirely
+//  - wishlistNames: boost these in ranking (own wish list)
+//  - friendSourceByLowerName: boost + tag places a friend has saved
+// Best-effort — a signal-fetch failure should never block the core search.
+async function fetchPersonalizationSignals(req) {
+  const empty = { beenThereNames: new Set(), wishlistNames: new Set(), friendSourceByLowerName: new Map() };
   try {
-    if (!process.env.POSTGRES_URL || restaurants.length === 0) return;
+    if (!process.env.POSTGRES_URL) return empty;
     const user = await getSessionUser(req);
-    if (!user) return;
+    if (!user) return empty;
 
-    const { rows: friends } = await sql`
-      SELECT u.id, u.name FROM friendships f JOIN users u ON u.id = f.friend_id
-      WHERE f.user_id = ${user.id} AND f.status = 'accepted'
-    `;
-    if (friends.length === 0) return;
-    const friendIds = friends.map(f => f.id);
-    const friendNameById = new Map(friends.map(f => [f.id, f.name]));
-    const candidateNames = restaurants.map(r => r.name);
+    const [beenThere, wishlist, friends] = await Promise.all([
+      sql`SELECT restaurant_name FROM been_there WHERE user_id = ${user.id}`,
+      sql`SELECT restaurant_name FROM wish_list WHERE user_id = ${user.id}`,
+      sql`SELECT u.id, u.name FROM friendships f JOIN users u ON u.id = f.friend_id WHERE f.user_id = ${user.id} AND f.status = 'accepted'`,
+    ]);
 
-    const { rows: matches } = await sql`
-      SELECT user_id, restaurant_name FROM (
-        SELECT user_id, restaurant_name FROM been_there
-        UNION
-        SELECT user_id, restaurant_name FROM wish_list
-      ) t WHERE user_id = ANY(${friendIds}) AND restaurant_name = ANY(${candidateNames})
-    `;
-    if (matches.length === 0) return;
+    const beenThereNames = new Set(beenThere.rows.map(r => r.restaurant_name.toLowerCase()));
+    const wishlistNames = new Set(wishlist.rows.map(r => r.restaurant_name.toLowerCase()));
 
-    const sourceByLowerName = new Map();
-    for (const m of matches) {
-      const key = m.restaurant_name.toLowerCase();
-      if (!sourceByLowerName.has(key)) {
-        sourceByLowerName.set(key, { id: m.user_id, name: friendNameById.get(m.user_id) });
+    const friendSourceByLowerName = new Map();
+    if (friends.rows.length > 0) {
+      const friendIds = friends.rows.map(f => f.id);
+      const friendNameById = new Map(friends.rows.map(f => [f.id, f.name]));
+      const { rows: matches } = await sql`
+        SELECT user_id, restaurant_name FROM (
+          SELECT user_id, restaurant_name FROM been_there
+          UNION
+          SELECT user_id, restaurant_name FROM wish_list
+        ) t WHERE user_id = ANY(${friendIds})
+      `;
+      for (const m of matches) {
+        const key = m.restaurant_name.toLowerCase();
+        if (!friendSourceByLowerName.has(key)) {
+          friendSourceByLowerName.set(key, { id: m.user_id, name: friendNameById.get(m.user_id) });
+        }
       }
     }
-    for (const r of restaurants) {
-      const source = sourceByLowerName.get(r.name.toLowerCase());
-      if (source) r.sourceFriend = source;
-    }
+    return { beenThereNames, wishlistNames, friendSourceByLowerName };
   } catch (e) {
-    console.error('Friend-source annotation skipped:', e);
+    console.error('Personalization signals skipped:', e);
+    return empty;
+  }
+}
+
+function rankingBoost(name, personalization) {
+  const key = name.toLowerCase();
+  let boost = 1;
+  if (personalization.wishlistNames.has(key)) boost *= 1.5;
+  if (personalization.friendSourceByLowerName.has(key)) boost *= 1.25;
+  return boost;
+}
+
+// GET /api/restaurants?photo=places/XXX/photos/YYY&w=400 — proxies a Places
+// photo without exposing GOOGLE_PLACES_API_KEY to the browser. Google's photo
+// endpoint 302s to a public googleusercontent.com URL that needs no key, so
+// this just forwards that redirect straight to the client.
+const PHOTO_REF_RE = /^places\/[^/]+\/photos\/[^/]+$/;
+
+async function handlePhotoProxy(req, res) {
+  try {
+    if (!GOOGLE_KEY) return res.status(500).json({ error: 'Server missing GOOGLE_PLACES_API_KEY' });
+    const url = new URL(req.url, `http://${req.headers.host}`);
+    const ref = url.searchParams.get('photo') || '';
+    if (!PHOTO_REF_RE.test(ref)) return res.status(400).json({ error: 'Invalid photo reference' });
+    const width = Math.min(1200, Math.max(100, parseInt(url.searchParams.get('w'), 10) || 400));
+
+    const photoUrl = `https://places.googleapis.com/v1/${ref}/media?maxWidthPx=${width}&key=${GOOGLE_KEY}`;
+    const upstream = await fetch(photoUrl, { redirect: 'manual' });
+    const location = upstream.headers.get('location');
+
+    if (upstream.status >= 300 && upstream.status < 400 && location) {
+      res.setHeader('Cache-Control', 'public, max-age=86400');
+      return res.redirect(302, location);
+    }
+    if (upstream.ok) {
+      const buf = Buffer.from(await upstream.arrayBuffer());
+      res.setHeader('Content-Type', upstream.headers.get('content-type') || 'image/jpeg');
+      res.setHeader('Cache-Control', 'public, max-age=86400');
+      return res.status(200).send(buf);
+    }
+    return res.status(404).json({ error: 'Photo not found' });
+  } catch (e) {
+    console.error('Photo proxy error:', e);
+    return res.status(500).json({ error: 'Photo proxy failed' });
   }
 }
 
 export default async function handler(req, res) {
+  if (req.method === 'GET') return handlePhotoProxy(req, res);
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -193,20 +250,22 @@ export default async function handler(req, res) {
     const priceRange = PRICE_MAP[params.price] || PRICE_MAP['$$'];
 
     const CATEGORY_QUERIES = {
-  'Boba': ['boba tea shop', 'bubble tea'],
-  'Bars': ['cocktail bar', 'bar'],
-  'Smoothies/Juice': ['smoothie shop', 'juice bar'],
-};
+      'Boba': ['boba tea shop', 'bubble tea'],
+      'Bars': ['cocktail bar', 'bar'],
+      'Smoothies/Juice': ['smoothie shop', 'juice bar'],
+    };
 
-let searchQueries;
-if (params.cuisines && params.cuisines.length > 0) {
-  searchQueries = params.cuisines.slice(0, 3).flatMap(c => {
-    if (CATEGORY_QUERIES[c]) return CATEGORY_QUERIES[c];
-    return [`${c} restaurant`];
-  });
-} else {
-  searchQueries = ['restaurant'];
-}
+    let searchQueries;
+    if (params.cuisines && params.cuisines.length > 0) {
+      searchQueries = params.cuisines.slice(0, 3).flatMap(c => {
+        if (CATEGORY_QUERIES[c]) return CATEGORY_QUERIES[c];
+        return [`${c} restaurant`];
+      });
+    } else {
+      searchQueries = ['restaurant'];
+    }
+
+    const personalization = await fetchPersonalizationSignals(req);
 
     const allPlaces = [];
     const seen = new Set();
@@ -225,6 +284,7 @@ if (params.cuisines && params.cuisines.length > 0) {
         if (excludeIds.has(p.id)) continue;
         seen.add(p.id);
         const name = (p.displayName?.text || '').toLowerCase();
+        if (personalization.beenThereNames.has(name)) continue;
         const cuisine = inferCuisine(p.types, p.displayName?.text);
         const vetoed = (params.vetoes || []).some(v => name.includes(v.toLowerCase()) || cuisine.toLowerCase() === v.toLowerCase());
         if (vetoed) continue;
@@ -238,16 +298,14 @@ if (params.cuisines && params.cuisines.length > 0) {
     })).filter(p => p._distance <= params.distance);
 
     placesWithDist.sort((a, b) => {
-      const scoreA = (a.rating || 0) * Math.log10((a.userRatingCount || 0) + 10);
-      const scoreB = (b.rating || 0) * Math.log10((b.userRatingCount || 0) + 10);
+      const scoreA = (a.rating || 0) * Math.log10((a.userRatingCount || 0) + 10) * rankingBoost(a.displayName?.text || '', personalization);
+      const scoreB = (b.rating || 0) * Math.log10((b.userRatingCount || 0) + 10) * rankingBoost(b.displayName?.text || '', personalization);
       return scoreB - scoreA;
     });
 
     const count = params.count || 6;
     const top = placesWithDist.slice(0, count);
-    const restaurants = top.map(p => ({ ...formatRestaurant(p, params), distance: p._distance }));
-
-    await annotateFriendSources(req, restaurants);
+    const restaurants = top.map(p => ({ ...formatRestaurant(p, params, personalization), distance: p._distance }));
 
     return res.status(200).json({ restaurants, location: geo.formatted });
   } catch (e) {

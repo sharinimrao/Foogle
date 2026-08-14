@@ -526,6 +526,38 @@
     <button class="text-btn" id="profile-logout-btn" style="margin-top:1.5rem;">Log Out</button>
   </section>
 
+  <section class="screen" id="screen-settings">
+    <button class="back-btn" data-back="profile"><svg class="icon icon-sm"><use href="#i-back"></use></svg> back</button>
+    <div class="nav-page-title"><h2>Settings</h2></div>
+
+    <div class="settings-section" id="settings-password-section">
+      <div class="profile-section-label">Change Password</div>
+      <div class="login-field">
+        <label for="settings-current-password">Current password:</label>
+        <input type="password" id="settings-current-password" autocomplete="off" />
+      </div>
+      <div class="login-field">
+        <label for="settings-new-password">New password:</label>
+        <input type="password" id="settings-new-password" autocomplete="off" />
+      </div>
+      <p class="login-error" id="settings-password-error" hidden></p>
+      <p class="login-error" id="settings-password-success" hidden style="color:var(--teal);"></p>
+      <button class="primary-btn small" id="settings-password-save">Update Password</button>
+    </div>
+
+    <div class="settings-section" id="settings-google-note" hidden>
+      <div class="profile-section-label">Password</div>
+      <p class="modal-fine">This account signs in with Google, so there's no password to change here.</p>
+    </div>
+
+    <div class="settings-section">
+      <div class="profile-section-label">Account</div>
+      <button class="text-btn" id="settings-logout-btn">Log Out</button>
+      <br>
+      <button class="text-btn" id="settings-delete-account-btn" style="color:var(--red);margin-top:0.75rem;">Delete Account</button>
+    </div>
+  </section>
+
 </main>
 
 <nav class="bottom-nav" id="bottom-nav" hidden>
@@ -563,6 +595,11 @@
 <dialog id="edit-profile-modal">
   <div class="modal-content">
     <h3>Edit Profile</h3>
+    <div class="edit-avatar-row">
+      <div class="profile-avatar" id="edit-avatar-preview">S</div>
+      <button type="button" class="text-btn" id="edit-avatar-btn">Change Photo</button>
+      <input type="file" id="edit-avatar-input" accept="image/*" hidden />
+    </div>
     <div class="login-field">
       <label for="profile-name-input">Display name:</label>
       <input type="text" id="profile-name-input" autocomplete="off" />
@@ -577,11 +614,13 @@
     <div class="login-field">
       <label for="mark-visited-input">Where are you?</label>
       <input type="text" id="mark-visited-location" placeholder="City, neighborhood, or zip" autocomplete="off" />
+      <button type="button" class="text-btn" id="mark-visited-use-location">Use my Location</button>
     </div>
     <div class="login-field">
       <label for="mark-visited-input">Restaurant or search term:</label>
       <input type="text" id="mark-visited-input" placeholder="e.g. Ramen Shop" autocomplete="off" />
     </div>
+    <p class="login-error" id="mark-visited-error" hidden></p>
     <button class="primary-btn small" id="mark-visited-search-btn">Search</button>
     <div id="mark-visited-results"></div>
   </div>

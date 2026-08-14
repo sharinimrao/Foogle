@@ -9,14 +9,18 @@ export default async function handler(req, res) {
     const user = await requireAuth(req, res);
     if (!user) return;
 
-    const [dietary, beenCount, wishCount] = await Promise.all([
+    // avatar_url is fetched separately (not via getSessionUser, which runs on
+    // nearly every authenticated request) since it can be a sizeable base64
+    // blob — no reason to pull it on requests that don't need it.
+    const [dietary, beenCount, wishCount, avatar] = await Promise.all([
       sql`SELECT preference FROM dietary_preferences WHERE user_id = ${user.id} ORDER BY preference`,
       sql`SELECT count(*)::int AS n FROM been_there WHERE user_id = ${user.id}`,
       sql`SELECT count(*)::int AS n FROM wish_list WHERE user_id = ${user.id}`,
+      sql`SELECT avatar_url FROM users WHERE id = ${user.id}`,
     ]);
 
     return res.status(200).json({
-      user,
+      user: { ...user, avatar_url: avatar.rows[0]?.avatar_url || null },
       dietaryPreferences: dietary.rows.map(r => r.preference),
       beenThereCount: beenCount.rows[0].n,
       wishlistCount: wishCount.rows[0].n,

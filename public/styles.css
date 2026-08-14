@@ -1020,6 +1020,13 @@ input[type="range"]::-moz-range-thumb {
   gap: 6px;
   margin-bottom: 0.75rem;
 }
+.place-photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: inherit;
+  display: block;
+}
 .sc-image-caption {
   font-family: var(--display);
   font-weight: 700;
@@ -1455,7 +1462,11 @@ input[type="range"]::-moz-range-thumb {
   font-size: 40px;
   color: var(--ink);
   margin: 0 auto 12px;
+  overflow: hidden;
 }
+.avatar-photo { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; display: block; }
+.edit-avatar-row { display: flex; flex-direction: column; align-items: center; gap: 4px; margin-bottom: 1.25rem; }
+.edit-avatar-row .profile-avatar { margin-bottom: 0; cursor: pointer; }
 .profile-name { font-family: var(--display); font-weight: 700; font-size: 18px; color: var(--ink); margin-bottom: 2px; }
 .profile-edit-btn {
   background: none;
@@ -1476,6 +1487,13 @@ input[type="range"]::-moz-range-thumb {
   margin-bottom: 8px;
 }
 .profile-dietary { margin-bottom: 1.75rem; }
+.settings-section {
+  margin-bottom: 2rem;
+  padding-bottom: 1.75rem;
+  border-bottom: 2px dashed var(--navy-faint);
+}
+.settings-section:last-child { border-bottom: none; }
+.settings-section .login-field { margin-bottom: 1rem; }
 .profile-links { border-top: 2px dashed var(--navy-faint); }
 .profile-link {
   width: 100%;

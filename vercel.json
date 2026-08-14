@@ -10,6 +10,7 @@
     { "source": "/api/auth/login", "destination": "/api/auth?action=login" },
     { "source": "/api/auth/logout", "destination": "/api/auth?action=logout" },
     { "source": "/api/auth/google", "destination": "/api/auth?action=google" },
+    { "source": "/api/auth/change-password", "destination": "/api/auth?action=change-password" },
 
     { "source": "/api/users/me", "destination": "/api/users?action=me" },
     { "source": "/api/users/dietary", "destination": "/api/users?action=dietary" },

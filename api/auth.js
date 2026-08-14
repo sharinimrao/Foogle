@@ -7,7 +7,7 @@ import { randomBytes } from 'node:crypto';
 import { sql, requireDb } from './_db.js';
 import {
   hashPassword, verifyPassword, createSession, setSessionCookie,
-  clearSessionCookie, parseCookies, SESSION_COOKIE, getOrigin, cookieString,
+  clearSessionCookie, parseCookies, SESSION_COOKIE, getOrigin, cookieString, requireAuth,
 } from './_auth.js';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -21,6 +21,7 @@ export default async function handler(req, res) {
   if (action === 'signup') return handleSignup(req, res);
   if (action === 'login') return handleLogin(req, res);
   if (action === 'logout') return handleLogout(req, res);
+  if (action === 'change-password') return handleChangePassword(req, res);
   return res.status(404).json({ error: 'Not found' });
 }
 
@@ -99,6 +100,36 @@ async function handleLogin(req, res) {
     return res.status(200).json({ user: { id: user.id, email: user.email, name: user.name, auth_provider: user.auth_provider, created_at: user.created_at } });
   } catch (e) {
     console.error('Login error:', e);
+    return res.status(e.statusCode || 500).json({ error: e.message });
+  }
+}
+
+async function handleChangePassword(req, res) {
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  try {
+    requireDb();
+    const user = await requireAuth(req, res);
+    if (!user) return;
+
+    const { rows } = await sql`SELECT auth_provider, password_hash FROM users WHERE id = ${user.id}`;
+    const row = rows[0];
+    if (!row || row.auth_provider !== 'local') {
+      return res.status(400).json({ error: 'This account signs in with Google — no password to change' });
+    }
+
+    const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+    const currentPassword = body.currentPassword || '';
+    const newPassword = body.newPassword || '';
+
+    const ok = await verifyPassword(currentPassword, row.password_hash);
+    if (!ok) return res.status(401).json({ error: 'Current password is incorrect' });
+    if (newPassword.length < 8) return res.status(400).json({ error: 'New password needs at least 8 characters' });
+
+    const newHash = await hashPassword(newPassword);
+    await sql`UPDATE users SET password_hash = ${newHash} WHERE id = ${user.id}`;
+    return res.status(200).json({ ok: true });
+  } catch (e) {
+    console.error('Change password error:', e);
     return res.status(e.statusCode || 500).json({ error: e.message });
   }
 }
