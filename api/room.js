@@ -1,4 +1,4 @@
-import { kv } from '@vercel/kv';
+import { kv } from './_kv.js';
 
 function genCode() {
   const chars = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';

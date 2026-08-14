@@ -1,4 +1,4 @@
-import { kv } from '@vercel/kv';
+import { kv } from '../_kv.js';
 import { publish } from '../_pusher.js';
 
 export default async function handler(req, res) {
