@@ -1269,12 +1269,11 @@ async function buildSavedScreen() {
   const q = $('#saved-search').value.trim().toLowerCase();
   const items = places.filter(r => !q || r.name.toLowerCase().includes(q));
   renderPlaceList('#saved-list', items, {
-    emptyText: "You haven't marked anywhere as visited yet.",
+    emptyText: "You haven't marked anywhere as visited yet — tap \"Been There\" on any restaurant card to add it here.",
     onRemove: async (id) => { await removeBeenThere(id); buildSavedScreen(); },
   });
 }
 $('#saved-search').oninput = () => buildSavedScreen();
-$('#mark-visited-btn').onclick = () => openMarkVisitedModal('been');
 
 async function buildWishlistScreen(friend = null) {
   state.viewingFriend = friend;
@@ -1309,13 +1308,14 @@ async function buildWishlistScreen(friend = null) {
   }
 }
 $('#wishlist-search').oninput = () => buildWishlistScreen();
-$('#wishlist-search-bar').addEventListener('click', () => { if (!state.viewingFriend) openMarkVisitedModal('wish'); });
+$('#wishlist-search-bar').addEventListener('click', () => { if (!state.viewingFriend) openAddToWishlistModal(); });
 $('#wishlist-back').onclick = () => { state.viewingFriend = null; buildFriendsScreen(); show('friends'); };
 
-let markVisitedTargetTab = 'been';
-function openMarkVisitedModal(tab) {
-  markVisitedTargetTab = tab;
-  $('#mark-visited-modal h3').textContent = tab === 'been' ? 'Mark a place as visited' : 'Add to your wish list';
+// Been There no longer has its own search-and-add flow — the one-tap
+// "Been There" button on every restaurant card (search results, swipe
+// cards, match screen, session-end) covers that now. This modal is Wish
+// List-only.
+function openAddToWishlistModal() {
   $('#mark-visited-location').value = state.solo.location || '';
   $('#mark-visited-input').value = '';
   $('#mark-visited-results').innerHTML = '';
@@ -1349,10 +1349,10 @@ $('#mark-visited-search-btn').onclick = async () => {
     $$('#mark-visited-results [data-add]').forEach(el => {
       el.onclick = async () => {
         const spot = results[parseInt(el.dataset.add)];
-        if (markVisitedTargetTab === 'been') await addBeenThere(spot); else await addWishList(spot);
+        await addWishList(spot);
         $('#mark-visited-modal').close();
-        if (markVisitedTargetTab === 'been') await buildSavedScreen(); else await buildWishlistScreen();
-        toast(markVisitedTargetTab === 'been' ? 'Marked as visited' : 'Added to wish list');
+        await buildWishlistScreen();
+        toast('Added to wish list');
       };
     });
   } catch (e) {

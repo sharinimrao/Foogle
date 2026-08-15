@@ -1401,21 +1401,6 @@ input[type="range"]::-moz-range-thumb {
 }
 .saved-item-remove:hover { color: var(--red); }
 
-.mark-visited-btn {
-  width: 100%;
-  background: var(--cream-dim);
-  border: 2px dashed var(--navy);
-  border-radius: 12px;
-  padding: 14px;
-  font-family: var(--display);
-  font-weight: 700;
-  font-size: 14px;
-  color: var(--ink);
-  cursor: pointer;
-  margin-bottom: 1rem;
-}
-.mark-visited-btn:hover { background: var(--navy-faint); }
-
 .empty-state {
   text-align: center;
   padding: 3rem 1.5rem;
