@@ -354,7 +354,6 @@ function wireUseMyLocationButton(buttonId, inputId, { reverseGeocode = true } = 
 
 wireUseMyLocationButton('#use-my-location', '#solo-location');
 wireUseMyLocationButton('#use-my-location-group', '#group-location', { reverseGeocode: false });
-wireUseMyLocationButton('#mark-visited-use-location', '#mark-visited-location');
 
 $('#solo-find').onclick = async () => {
   const loc = $('#solo-location').value.trim();
@@ -1302,66 +1301,13 @@ async function buildWishlistScreen(friend = null) {
     const q = $('#wishlist-search').value.trim().toLowerCase();
     const items = places.filter(r => !q || r.name.toLowerCase().includes(q));
     renderPlaceList('#wishlist-list', items, {
-      emptyText: 'Nothing on your wish list yet — search above to add a place.',
+      emptyText: "Nothing on your wish list yet — tap \"Wish List\" on any restaurant card to add it here.",
       onRemove: async (id) => { await removeWishList(id); buildWishlistScreen(); },
     });
   }
 }
 $('#wishlist-search').oninput = () => buildWishlistScreen();
-$('#wishlist-search-bar').addEventListener('click', () => { if (!state.viewingFriend) openAddToWishlistModal(); });
 $('#wishlist-back').onclick = () => { state.viewingFriend = null; buildFriendsScreen(); show('friends'); };
-
-// Been There no longer has its own search-and-add flow — the one-tap
-// "Been There" button on every restaurant card (search results, swipe
-// cards, match screen, session-end) covers that now. This modal is Wish
-// List-only.
-function openAddToWishlistModal() {
-  $('#mark-visited-location').value = state.solo.location || '';
-  $('#mark-visited-input').value = '';
-  $('#mark-visited-results').innerHTML = '';
-  $('#mark-visited-error').hidden = true;
-  $('#mark-visited-modal').showModal();
-}
-$('#mark-visited-search-btn').onclick = async () => {
-  const loc = $('#mark-visited-location').value.trim();
-  const q = $('#mark-visited-input').value.trim();
-  const errorEl = $('#mark-visited-error');
-  errorEl.hidden = true;
-  // A plain toast() would be invisible here — native <dialog> elements always
-  // paint above position:fixed content regardless of z-index, so validation
-  // errors while this modal is open need to render inside it instead.
-  if (!loc) {
-    errorEl.textContent = 'Enter a location, or tap "Use my Location" above.';
-    errorEl.hidden = false;
-    return;
-  }
-  const btn = $('#mark-visited-search-btn');
-  btn.disabled = true;
-  try {
-    // No price param on purpose — this search should find a place regardless
-    // of cost, not just Expensive/Very Expensive ones.
-    const data = await fetchRestaurants({ location: loc, cuisines: q ? [q] : [], vetoes: [], distance: 25, count: 6 });
-    const results = data.restaurants || [];
-    const resultsEl = $('#mark-visited-results');
-    resultsEl.innerHTML = results.length
-      ? results.map((r, i) => `<div class="saved-item" data-add="${i}" style="cursor:pointer;"><div class="saved-item-icon">${foodIcon('icon-md')}</div><div class="saved-item-body"><div class="saved-item-name">${escapeHtml(r.name)}</div></div><div class="saved-item-meta">${escapeHtml(r.cuisine)}</div></div>`).join('')
-      : '<p class="modal-fine">No results — try a different search.</p>';
-    $$('#mark-visited-results [data-add]').forEach(el => {
-      el.onclick = async () => {
-        const spot = results[parseInt(el.dataset.add)];
-        await addWishList(spot);
-        $('#mark-visited-modal').close();
-        await buildWishlistScreen();
-        toast('Added to wish list');
-      };
-    });
-  } catch (e) {
-    errorEl.textContent = e.message || 'Search failed';
-    errorEl.hidden = false;
-  } finally {
-    btn.disabled = false;
-  }
-};
 
 /* ---------- Friends (Postgres-backed) ---------- */
 async function buildFriendsScreen() {
