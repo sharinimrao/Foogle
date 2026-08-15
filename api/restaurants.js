@@ -195,6 +195,15 @@ function rankingBoost(name, personalization) {
   return boost;
 }
 
+// Review count keeps buying ranking credit past the point where it says
+// anything about quality, which let places with hundreds of reviews bury a
+// well-rated place with only a handful (e.g. 4.7 rating from real diners).
+// Capping it means rating differences decide close calls instead of volume.
+const REVIEW_COUNT_CAP = 50;
+function reviewWeight(reviewCount) {
+  return Math.log10(Math.min(reviewCount || 0, REVIEW_COUNT_CAP) + 10);
+}
+
 // GET /api/restaurants?photo=places/XXX/photos/YYY&w=400 — proxies a Places
 // photo without exposing GOOGLE_PLACES_API_KEY to the browser. Google's photo
 // endpoint 302s to a public googleusercontent.com URL that needs no key, so
@@ -302,8 +311,8 @@ export default async function handler(req, res) {
     })).filter(p => p._distance <= params.distance);
 
     placesWithDist.sort((a, b) => {
-      const scoreA = (a.rating || 0) * Math.log10((a.userRatingCount || 0) + 10) * rankingBoost(a.displayName?.text || '', personalization);
-      const scoreB = (b.rating || 0) * Math.log10((b.userRatingCount || 0) + 10) * rankingBoost(b.displayName?.text || '', personalization);
+      const scoreA = (a.rating || 0) * reviewWeight(a.userRatingCount) * rankingBoost(a.displayName?.text || '', personalization);
+      const scoreB = (b.rating || 0) * reviewWeight(b.userRatingCount) * rankingBoost(b.displayName?.text || '', personalization);
       return scoreB - scoreA;
     });
 

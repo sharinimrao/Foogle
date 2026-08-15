@@ -385,7 +385,7 @@ async function runSoloSearch() {
       vetoes: Array.from(state.solo.vetoes),
       price: state.solo.price,
       distance: effectiveDistance,
-      count: 6,
+      count: 8,
       excludeIds: Array.from(state.solo.seenIds),
     });
     state.solo.results = data.restaurants;
@@ -413,7 +413,7 @@ async function reshuffleResults() {
       vetoes: Array.from(state.solo.vetoes),
       price: state.solo.price,
       distance: effectiveDistance,
-      count: 6,
+      count: 8,
       excludeIds: Array.from(state.solo.seenIds),
     });
     if (!data.restaurants || data.restaurants.length === 0) {
