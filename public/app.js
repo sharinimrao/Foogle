@@ -350,6 +350,13 @@ function wireUseMyLocationButton(buttonId, inputId, { reverseGeocode = true } = 
       }
     );
   };
+  // A manual edit after "Use My Location" must force a fresh geocode of the
+  // typed text next search, not silently keep searching around the old fix.
+  const input = $(inputId);
+  input.addEventListener('input', () => {
+    delete input.dataset.coords;
+    btn.textContent = idleLabel;
+  });
 }
 
 wireUseMyLocationButton('#use-my-location', '#solo-location');
