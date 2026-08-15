@@ -247,7 +247,11 @@ export default async function handler(req, res) {
       : await geocode(params.location);
 
     const radiusMeters = Math.min(50000, (params.distance || 5) * 1609);
-    const priceRange = PRICE_MAP[params.price] || PRICE_MAP['$$'];
+    // No price filter at all when the caller doesn't specify one (e.g. the
+    // "mark a place as visited" / "add to wish list" search, which should
+    // find ANY place regardless of cost) — omitting it entirely, rather than
+    // defaulting to a specific tier, avoids silently excluding real results.
+    const priceRange = params.price ? (PRICE_MAP[params.price] || PRICE_MAP['$$']) : null;
 
     const CATEGORY_QUERIES = {
       'Boba': ['boba tea shop', 'bubble tea'],
@@ -276,8 +280,8 @@ export default async function handler(req, res) {
         lng: geo.lng,
         radiusMeters,
         query: q,
-        minPrice: priceRange.min,
-        maxPrice: priceRange.max,
+        minPrice: priceRange?.min,
+        maxPrice: priceRange?.max,
       });
       for (const p of places) {
         if (seen.has(p.id)) continue;

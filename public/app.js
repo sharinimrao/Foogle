@@ -1276,7 +1276,9 @@ $('#mark-visited-search-btn').onclick = async () => {
   const btn = $('#mark-visited-search-btn');
   btn.disabled = true;
   try {
-    const data = await fetchRestaurants({ location: loc, cuisines: q ? [q] : [], vetoes: [], price: '$$$$', distance: 25, count: 6 });
+    // No price param on purpose — this search should find a place regardless
+    // of cost, not just Expensive/Very Expensive ones.
+    const data = await fetchRestaurants({ location: loc, cuisines: q ? [q] : [], vetoes: [], distance: 25, count: 6 });
     const results = data.restaurants || [];
     const resultsEl = $('#mark-visited-results');
     resultsEl.innerHTML = results.length
