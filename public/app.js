@@ -16,6 +16,57 @@ function placePhotoUrl(spot, width = 500) {
   return spot.photoRef ? `/api/restaurants?photo=${encodeURIComponent(spot.photoRef)}&w=${width}` : null;
 }
 
+// One-tap Been There / Wish List buttons, reused on every card that shows a
+// restaurant (solo results, detail, swipe cards, match, session-end).
+function quickSaveButtonsHTML() {
+  return `
+    <div class="quick-save-row">
+      <button type="button" class="quick-save-btn" data-quick-save="been">
+        <svg class="icon icon-xs"><use href="#i-bookmark"></use></svg><span>Been There</span>
+      </button>
+      <button type="button" class="quick-save-btn" data-quick-save="wish">
+        <svg class="icon icon-xs"><use href="#i-clipboard-heart"></use></svg><span>Wish List</span>
+      </button>
+    </div>
+  `;
+}
+
+function wireQuickSaveButtons(root, spot) {
+  const beenBtn = root.querySelector('[data-quick-save="been"]');
+  const wishBtn = root.querySelector('[data-quick-save="wish"]');
+  const stopSwipe = (e) => e.stopPropagation();
+
+  const wire = (btn, addFn, savedLabel) => {
+    if (!btn) return;
+    // Swipe cards bind drag gestures on mousedown/touchstart at the card
+    // level — stop those from reaching the card so tapping the button
+    // doesn't also start a swipe.
+    btn.addEventListener('mousedown', stopSwipe);
+    btn.addEventListener('touchstart', stopSwipe, { passive: true });
+    btn.onclick = async (e) => {
+      e.stopPropagation();
+      if (!state.currentUser) { toast('Log in to save places'); return; }
+      if (btn.classList.contains('saved')) return;
+      btn.disabled = true;
+      try {
+        const r = await addFn(spot);
+        if (r.ok) {
+          btn.classList.add('saved');
+          toast(savedLabel);
+        } else {
+          toast('Could not save');
+        }
+      } catch (err) {
+        toast('Could not save');
+      } finally {
+        btn.disabled = false;
+      }
+    };
+  };
+  wire(beenBtn, addBeenThere, 'Marked as visited');
+  wire(wishBtn, addWishList, 'Added to wish list');
+}
+
 const TOPBAR_SCREENS = new Set(['home', 'room', 'match']);
 const BOTTOM_NAV_SCREENS = new Set(['home', 'saved', 'wishlist', 'friends', 'profile', 'settings']);
 
@@ -419,8 +470,10 @@ function renderResults() {
       </div>
       <div class="rc-vibe">${escapeHtml(spot.vibe || spot.why || '')}</div>
       ${spot.rating ? `<div class="rc-rating"><span class="rc-stars">${starString(spot.rating)}</span><span>${spot.rating.toFixed(1)} · ${spot.reviewCount || 0} reviews</span></div>` : ''}
+      ${quickSaveButtonsHTML()}
     `;
     card.onclick = () => showDetail(spot);
+    wireQuickSaveButtons(card, spot);
     list.appendChild(card);
   });
 }
@@ -453,6 +506,7 @@ function showDetail(spot) {
         <span>${escapeHtml(spot.neighborhood || '')}</span>
         ${spot.rating ? `<span class="rc-meta-dot"></span><span class="rc-stars">${starString(spot.rating)}</span> <span>${spot.rating.toFixed(1)}</span>` : ''}
       </div>
+      ${quickSaveButtonsHTML()}
     </div>
     <div class="detail-section">
       <h4>The vibe</h4>
@@ -469,6 +523,7 @@ function showDetail(spot) {
       ${spot.phone ? `<button class="ghost-btn" id="detail-call">Call</button>` : `<button class="ghost-btn" id="detail-website">Website</button>`}
     </div>
   `;
+  wireQuickSaveButtons(c, spot);
   $('#detail-directions').onclick = () => {
     const q = encodeURIComponent(`${spot.name} ${spot.address || state.solo.location}`);
     window.open(`https://www.google.com/maps/search/?api=1&query=${q}`, '_blank');
@@ -647,9 +702,11 @@ function createSwipeCard(spot, stackPos) {
     ${friend ? `<div class="sc-via">Via ${escapeHtml(friend.name.split(' ')[0])}'s List</div>` : ''}
     <div class="sc-image">${placePhotoUrl(spot) ? `<img class="place-photo" src="${placePhotoUrl(spot)}" alt="${escapeHtml(spot.name)}" loading="lazy" />` : `${foodIcon('icon-xl')}<span class="sc-image-caption">Insert Image</span>`}</div>
     ${spot.rating ? `<div class="sc-rating"><span class="sc-rating-stars">${starString(spot.rating)}</span><span>${spot.rating.toFixed(1)} · ${spot.reviewCount || 0} reviews</span></div>` : ''}
+    ${quickSaveButtonsHTML()}
     <div class="swipe-overlay yes">YES</div>
     <div class="swipe-overlay no">NOPE</div>
   `;
+  wireQuickSaveButtons(card, spot);
   if (stackPos === 0) attachSwipe(card, spot);
   return card;
 }
@@ -967,11 +1024,13 @@ function showSessionEnd(matchIds) {
         <div class="smc-name">${escapeHtml(spot.name)}</div>
         <div class="smc-meta">${escapeHtml(spot.cuisine)} · ${escapeHtml(spot.priceLevel || '$$')} · ${escapeHtml(spot.neighborhood || '')}</div>
         <div class="smc-vibe">${escapeHtml(spot.vibe || spot.why || '')}</div>
+        ${quickSaveButtonsHTML()}
         <div class="smc-actions">
           <button class="smc-btn primary" data-action="directions">Directions</button>
           <button class="smc-btn" data-action="details">Details</button>
         </div>
       `;
+      wireQuickSaveButtons(card, spot);
       card.querySelector('[data-action="directions"]').onclick = (e) => {
         e.stopPropagation();
         const q = encodeURIComponent(`${spot.name} ${spot.address || state.group.location}`);
@@ -1015,6 +1074,9 @@ function showMatch(spot) {
     <span class="match-tag">${escapeHtml(dietaryTag || spot.cuisine)}</span>
     ${friend ? `<span class="match-tag">${escapeHtml(friend.name.split(' ')[0])}'s list</span>` : ''}
   `;
+  const matchQuickSave = $('#match-quick-save');
+  matchQuickSave.innerHTML = quickSaveButtonsHTML();
+  wireQuickSaveButtons(matchQuickSave, spot);
   const tally = state.group.tallyBySpot && state.group.tallyBySpot[spot.id || spot.name];
   const votesEl = $('#match-votes');
   if (typeof tally === 'number' && tally > 0) {
@@ -1303,8 +1365,62 @@ $('#mark-visited-search-btn').onclick = async () => {
 
 /* ---------- Friends (Postgres-backed) ---------- */
 async function buildFriendsScreen() {
+  await renderIncomingRequests();
   await renderFriendsList();
   await renderFriendSearchResults();
+}
+
+async function renderIncomingRequests() {
+  const container = $('#friends-requests');
+  try {
+    const r = await fetch('/api/friends?action=requests');
+    const requests = r.ok ? (await r.json()).requests || [] : [];
+    if (requests.length === 0) { container.innerHTML = ''; return; }
+    container.innerHTML = `<div class="friends-section-label">Friend Requests</div>` + requests.map(req => `
+      <div class="friend-row">
+        <span class="friend-name">${escapeHtml(req.name)}</span>
+        <div class="friend-request-actions">
+          <button class="friend-add-btn" data-accept-id="${req.id}">Accept</button>
+          <button class="friend-decline-btn" data-decline-id="${req.id}">Decline</button>
+        </div>
+      </div>
+    `).join('');
+    $$('#friends-requests [data-accept-id]').forEach(btn => {
+      btn.onclick = async () => {
+        btn.disabled = true;
+        try {
+          const r = await fetch('/api/friends?action=accept', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ requesterId: btn.dataset.acceptId }),
+          });
+          if (!r.ok) throw new Error();
+          toast('Friend request accepted');
+          buildFriendsScreen();
+        } catch (e) {
+          btn.disabled = false;
+          toast('Could not accept request');
+        }
+      };
+    });
+    $$('#friends-requests [data-decline-id]').forEach(btn => {
+      btn.onclick = async () => {
+        btn.disabled = true;
+        try {
+          const r = await fetch('/api/friends?action=decline', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ requesterId: btn.dataset.declineId }),
+          });
+          if (!r.ok) throw new Error();
+          buildFriendsScreen();
+        } catch (e) {
+          btn.disabled = false;
+          toast('Could not decline request');
+        }
+      };
+    });
+  } catch (e) {
+    container.innerHTML = '';
+  }
 }
 
 async function renderFriendsList() {
@@ -1333,6 +1449,12 @@ async function renderFriendsList() {
   }
 }
 
+function friendSearchButtonLabel(status) {
+  if (status === 'accepted') return 'Friends';
+  if (status === 'pending') return 'Requested';
+  return '+ Add';
+}
+
 async function renderFriendSearchResults() {
   const q = $('#friends-search').value.trim();
   const resultsEl = $('#friends-search-results');
@@ -1347,13 +1469,13 @@ async function renderFriendSearchResults() {
     resultsEl.innerHTML = `<div class="friends-section-label">Search results</div>` + users.map(u => `
       <div class="friend-row">
         <span class="friend-name">${escapeHtml(u.name)}</span>
-        <button class="friend-add-btn" data-add-id="${u.id}" ${u.isFriend ? 'disabled' : ''}>${u.isFriend ? 'Friends' : '+ Add'}</button>
+        <button class="friend-add-btn" data-add-id="${u.id}" ${u.friendStatus ? 'disabled' : ''}>${friendSearchButtonLabel(u.friendStatus)}</button>
       </div>
     `).join('');
     $$('#friends-search-results [data-add-id]').forEach(btn => {
       btn.onclick = async () => {
         btn.disabled = true;
-        btn.textContent = 'Adding…';
+        btn.textContent = 'Sending…';
         try {
           const r = await fetch('/api/friends/add', {
             method: 'POST',
@@ -1361,12 +1483,12 @@ async function renderFriendSearchResults() {
             body: JSON.stringify({ friendId: btn.dataset.addId }),
           });
           if (!r.ok) throw new Error();
-          toast('Friend added');
-          buildFriendsScreen();
+          btn.textContent = 'Requested';
+          toast('Friend request sent');
         } catch (e) {
           btn.disabled = false;
           btn.textContent = '+ Add';
-          toast('Could not add friend');
+          toast('Could not send request');
         }
       };
     });
@@ -1448,6 +1570,11 @@ $('#profile-edit-btn').onclick = () => {
   state.pendingAvatarDataUrl = undefined;
   renderAvatarInto($('#edit-avatar-preview'), state.currentUser);
   $('#edit-profile-modal').showModal();
+};
+
+$('#edit-profile-close').onclick = () => {
+  state.pendingAvatarDataUrl = undefined;
+  $('#edit-profile-modal').close();
 };
 
 $('#edit-avatar-preview').onclick = () => $('#edit-avatar-input').click();

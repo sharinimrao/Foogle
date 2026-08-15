@@ -441,6 +441,7 @@
         <div class="match-meta" id="match-meta">—</div>
         <div class="match-tags" id="match-tags"></div>
         <p class="match-why" id="match-why">—</p>
+        <div class="quick-save-row" id="match-quick-save" style="justify-content:center;"></div>
       </div>
       <div class="votes-pill" id="match-votes" hidden>0 Votes</div>
       <div class="match-actions">
@@ -485,6 +486,7 @@
       <svg class="icon icon-sm"><use href="#i-search"></use></svg>
       <input type="text" id="friends-search" placeholder="Find your friends…" autocomplete="off" />
     </div>
+    <div id="friends-requests"></div>
     <div id="friends-search-results"></div>
     <div id="friends-list"></div>
   </section>
@@ -594,6 +596,9 @@
 
 <dialog id="edit-profile-modal">
   <div class="modal-content">
+    <button type="button" class="modal-close-btn" id="edit-profile-close" aria-label="Close">
+      <svg class="icon icon-sm"><use href="#i-x"></use></svg>
+    </button>
     <h3>Edit Profile</h3>
     <div class="edit-avatar-row">
       <div class="profile-avatar" id="edit-avatar-preview">S</div>

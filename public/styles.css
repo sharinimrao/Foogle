@@ -1050,6 +1050,26 @@ input[type="range"]::-moz-range-thumb {
 }
 .sc-rating-stars { color: var(--mustard); font-size: 15px; letter-spacing: 1px; }
 
+.quick-save-row { display: flex; gap: 8px; margin: 0.5rem 0; flex-wrap: wrap; }
+.quick-save-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 7px 12px;
+  border-radius: 999px;
+  border: 2px solid var(--navy);
+  background: var(--paper);
+  cursor: pointer;
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 12px;
+  color: var(--ink);
+  transition: all 0.15s;
+}
+.quick-save-btn:hover { transform: translateY(-1px); }
+.quick-save-btn:disabled { opacity: 0.6; cursor: default; transform: none; }
+.quick-save-btn.saved { background: var(--teal); color: #fff; border-color: var(--navy); }
+
 .swipe-overlay {
   position: absolute;
   top: 1.25rem;
@@ -1436,6 +1456,19 @@ input[type="range"]::-moz-range-thumb {
   cursor: pointer;
 }
 .friend-add-btn:disabled { background: var(--navy-faint); color: var(--ink-fade); cursor: default; }
+.friend-request-actions { display: flex; gap: 8px; flex-shrink: 0; }
+.friend-decline-btn {
+  padding: 8px 16px;
+  border-radius: 999px;
+  border: 2px solid var(--navy);
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 12px;
+  cursor: pointer;
+}
+.friend-decline-btn:hover { background: var(--red); color: #fff; }
 .friends-section-label {
   font-family: var(--display);
   font-weight: 700;
@@ -1548,7 +1581,20 @@ dialog {
   width: calc(100% - 32px);
 }
 dialog::backdrop { background: rgba(38, 70, 83, 0.5); backdrop-filter: blur(4px); }
-.modal-content { padding: 1.75rem; }
+.modal-content { padding: 1.75rem; position: relative; }
+.modal-close-btn {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--ink-fade);
+  padding: 4px;
+  line-height: 0;
+  transition: color 0.15s;
+}
+.modal-close-btn:hover { color: var(--red); }
 .modal-content h3 {
   font-family: var(--display);
   font-size: 20px;

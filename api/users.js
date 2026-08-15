@@ -101,7 +101,7 @@ async function handleSearch(req, res, url) {
 
     const { rows } = await sql`
       SELECT u.id, u.name,
-        EXISTS(SELECT 1 FROM friendships f WHERE f.user_id = ${user.id} AND f.friend_id = u.id) AS "isFriend"
+        (SELECT status FROM friendships f WHERE f.user_id = ${user.id} AND f.friend_id = u.id) AS "friendStatus"
       FROM users u
       WHERE u.id != ${user.id} AND (u.name ILIKE ${'%' + q + '%'} OR u.email ILIKE ${'%' + q + '%'})
       ORDER BY u.name
